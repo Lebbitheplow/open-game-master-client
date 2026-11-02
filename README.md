@@ -409,7 +409,12 @@ desktop with nothing left to stop it. It must answer
 view-to-host packets as { "native": 1, "type": "message", "message": {
 "odm": 1, "type": "ready" } } (or another documented board message). Send
 the board ready message after receiving the first snapshot: the shell
-subscribes to view messages after the transport ready response.
+subscribes to view messages after the transport ready response. A Ctrl+R
+pressed in the native window never reaches the app's menu, so the program
+may send { "native": 1, "type": "reload" } to reload the game page it draws
+for, as View > Reload does. The app honours it only while the view is open
+and its page shows the local world; the reload closes the view, and the
+page's next open waits for the old program to exit.
 Each JSON packet is one line and at most 4 MiB. Standard error is drained
 without being saved; only an allowlist of ordinary Windows environment
 variables reaches the child.
