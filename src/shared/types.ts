@@ -474,7 +474,7 @@ export interface HomeFeed {
 }
 
 export type ShellEvent =
-  | { kind: "show-manager" }
+  | { kind: "show-manager"; notice?: string }
   // The platform back gesture (Android): leave the current screen for home,
   // or, from home, leave the app.
   | { kind: "back" }

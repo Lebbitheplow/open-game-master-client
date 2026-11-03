@@ -1960,12 +1960,17 @@ async function routeWebviewMessage(event: unknown): Promise<void> {
   const detail =
     wrapped && typeof wrapped === "object" && wrapped.detail !== undefined ? wrapped.detail : event;
   if (isShellRequest(detail)) {
-    // "Switch server" from the page's account menu (shell-hook.js). The
-    // plugin fires closeEvent for toolbar and back-button closes only, so
-    // the manager is shown explicitly here.
+    // "Switch server" from the page's account menu, or the page noticing
+    // its session died on its own (shell-hook.js). The plugin fires
+    // closeEvent for toolbar and back-button closes only, so the manager
+    // is shown explicitly here; the session news travels as a toast.
+    const lost = (detail as { odmShell?: unknown }).odmShell === "session-lost";
     await InAppBrowser.close().catch(() => undefined);
     gameWebViewClosed();
-    emit({ kind: "show-manager" });
+    emit({
+      kind: "show-manager",
+      notice: lost ? "Your session at this world ended. Sign in again." : "",
+    });
     return;
   }
   const share = shareRequestOf(detail);
@@ -1989,7 +1994,8 @@ function isShellRequest(detail: unknown): boolean {
   return (
     !!detail &&
     typeof detail === "object" &&
-    (detail as { odmShell?: unknown }).odmShell === "servers"
+    ((detail as { odmShell?: unknown }).odmShell === "servers" ||
+      (detail as { odmShell?: unknown }).odmShell === "session-lost")
   );
 }
 

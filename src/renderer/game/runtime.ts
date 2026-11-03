@@ -101,7 +101,15 @@ function patchedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Res
   const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
   const path = hostRelativePath(url, document.baseURI);
   if (path === null) return base(input, init);
-  if (path.startsWith("/api/auth/logout")) forgetObjectUrls();
+  if (path.startsWith("/api/auth/logout")) {
+    // A logout inside the app would revoke a session the app cannot
+    // renew without a stored password and strand the player. New servers
+    // hide the item in the shell; old ones still offer it, so the call
+    // never leaves and the App home door opens instead.
+    forgetObjectUrls();
+    (window as { odmShell?: { showServers?: () => void } }).odmShell?.showServers?.();
+    return Promise.resolve(new Response(null, { status: 204 }));
+  }
   const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
   headers.set("authorization", `Bearer ${client.session.token}`);
   headers.set("x-odm-client", "shell");
