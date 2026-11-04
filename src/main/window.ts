@@ -75,6 +75,7 @@ export class ShellWindow {
   // own pages or the device world itself.
   private portalHost = "";
   private unwatchCookies: (() => void) | null = null;
+  private unblockLogout: (() => void) | null = null;
   private onRevoked: ((origin: string) => void) | null = null;
   // Set while a browser-based sign-in (Discord OAuth) occupies the view.
   private loginCancel: ((reason: Error) => void) | null = null;
@@ -326,6 +327,7 @@ export class ShellWindow {
     // the pages it navigates: dark, like the shell page under it.
     view.setBackgroundColor(SHELL_BACKGROUND);
     this.watchForLogout(partition, origin);
+    this.blockLogoutRequest(view, origin);
     // The game UI pairs Pixels dice over Web Bluetooth; the shell provides
     // the device chooser Electron does not ship.
     wireBluetoothChooser(view.webContents, () => this.win);
@@ -493,9 +495,44 @@ export class ShellWindow {
     this.unwatchCookies = () => cookies.off("changed", listener);
   }
 
+  // An old server's web UI still offers "Log out" inside the app. Letting
+  // it through would revoke a session the app cannot always renew (no
+  // stored password, Discord-only accounts) and strand the player on a
+  // login page, so the request is cancelled before it reaches the server
+  // and the app's own home screen opens. New servers hide the item in the
+  // shell and never send it.
+  private blockLogoutRequest(view: WebContentsView, origin: string): void {
+    const filter = { urls: [`${origin}/api/auth/logout*`] };
+    const handler = (
+      details: Electron.OnBeforeRequestListenerDetails,
+      callback: (response: Electron.CallbackResponse) => void,
+    ): void => {
+      if (details.method === "POST" && this.view === view && this.currentOrigin === origin) {
+        callback({ cancel: true });
+        this.showManager();
+        return;
+      }
+      callback({});
+    };
+    try {
+      view.webContents.session.webRequest.onBeforeRequest(filter, handler);
+    } catch {
+      // A session that cannot watch still hides the item on new servers.
+    }
+    this.unblockLogout = () => {
+      try {
+        view.webContents.session.webRequest.onBeforeRequest(filter, null);
+      } catch {
+        // The session is gone with the view.
+      }
+    };
+  }
+
   private detachView(): void {
     this.unwatchCookies?.();
     this.unwatchCookies = null;
+    this.unblockLogout?.();
+    this.unblockLogout = null;
     if (!this.win || !this.view) return;
     this.win.contentView.removeChildView(this.view);
     this.view.webContents.close();

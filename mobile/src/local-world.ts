@@ -359,7 +359,13 @@ export function createLocalWorld(deps: LocalWorldDeps) {
     try {
       const origin = await start();
       const grant = await deps.loginForToken(origin, input.username, input.password);
-      await adopt(grant, "");
+      // The kept secret belongs to one account: signing back in as the
+      // same player keeps the minted one (or a later sign-in could not
+      // renew silently), while a different username must not inherit it.
+      const previous = await deps.loadProfile().catch(() => null);
+      const secret =
+        previous && previous.username === grant.username ? previous.secret : "";
+      await adopt(grant, secret);
       return { ok: true, status: await status() };
     } catch (err) {
       return fail(err);
