@@ -64,6 +64,7 @@ import {
 } from "../../src/shared/portal-logic";
 import { landingPath, safeInnerPath } from "../../src/shared/open-path";
 import { diagnosticSummary, reportFileInput, type AppFacts } from "../../src/shared/diagnostics";
+import { SESSION_LOST_NOTICE } from "../../src/shared/session-watch";
 import type {
   AccountDeletionResult,
   ConnectResult,
@@ -1965,11 +1966,14 @@ async function routeWebviewMessage(event: unknown): Promise<void> {
     // closeEvent for toolbar and back-button closes only, so the manager
     // is shown explicitly here; the session news travels as a toast.
     const lost = (detail as { odmShell?: unknown }).odmShell === "session-lost";
+    // A Discord sign-in runs the server's signed-out pages in this web view
+    // on purpose, and their refusals are no news; its own watcher settles it.
+    if (lost && pendingDiscord) return;
     await InAppBrowser.close().catch(() => undefined);
     gameWebViewClosed();
     emit({
       kind: "show-manager",
-      notice: lost ? "Your session at this world ended. Sign in again." : "",
+      notice: lost ? SESSION_LOST_NOTICE : "",
     });
     return;
   }
