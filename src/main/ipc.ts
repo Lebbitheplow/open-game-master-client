@@ -543,6 +543,9 @@ export function registerIpc(ctx: ShellContext): ShellIpc {
     // Kept like the device world's own profile so the session can be
     // renewed later without asking for something nobody was ever told.
     secret?: string,
+    // The password the player typed, when there was one: a kept made-up
+    // one that differs is stale (src/shared/kept-secret.ts).
+    typedPassword?: string,
   ): Promise<Result<{ server: ServerSummary }>> => {
     let name = "";
     let instanceId = "";
@@ -561,6 +564,7 @@ export function registerIpc(ctx: ShellContext): ShellIpc {
       tokenExpiresAt: grant.expiresAt,
       instanceId,
       ...(secret ? { secret } : {}),
+      ...(typedPassword !== undefined ? { typedPassword } : {}),
     });
     await attachRemote(entry, grant.token, joinCode);
     return { ok: true, server: summaryOf(entry) };
@@ -795,8 +799,9 @@ export function registerIpc(ctx: ShellContext): ShellIpc {
     try {
       const origin = normalizeOrigin(str(input?.origin, 300));
       if (!origin) return fail(new Error("Bad server address."));
-      const grant = await loginForToken(origin, str(input?.username, 24), str(input?.password, 100));
-      return await adoptGrant(origin, grant, joinCodeOf(input?.joinCode));
+      const password = str(input?.password, 100);
+      const grant = await loginForToken(origin, str(input?.username, 24), password);
+      return await adoptGrant(origin, grant, joinCodeOf(input?.joinCode), undefined, password);
     } catch (err) {
       return fail(err);
     }
@@ -918,7 +923,7 @@ export function registerIpc(ctx: ShellContext): ShellIpc {
     }
   });
 
-  const adoptLocalGrant = (grant: TokenGrant, secret?: string): void => {
+  const adoptLocalGrant = (grant: TokenGrant, secret?: string, typedPassword?: string): void => {
     store.upsert({
       id: LOCAL_SERVER_ID,
       origin: "local",
@@ -927,6 +932,7 @@ export function registerIpc(ctx: ShellContext): ShellIpc {
       token: grant.token,
       tokenExpiresAt: grant.expiresAt,
       secret,
+      typedPassword,
     });
   };
 
@@ -983,12 +989,11 @@ export function registerIpc(ctx: ShellContext): ShellIpc {
   shellIpc.handle("local:login", async (_event, input: Record<string, unknown>) => {
     try {
       await local.start();
-      const grant = await loginForToken(
-        local.origin,
-        str(input?.username, 24),
-        str(input?.password, 100),
-      );
-      adoptLocalGrant(grant);
+      const password = str(input?.password, 100);
+      const grant = await loginForToken(local.origin, str(input?.username, 24), password);
+      // The form is only asked for once the kept profile password no
+      // longer signs in, so the typed one shows it stale.
+      adoptLocalGrant(grant, undefined, password);
       // In the background: the sign-in has succeeded whatever the broker
       // says, and a slow DELETE must not hold it (or fail it).
       void syncPublicUrl();

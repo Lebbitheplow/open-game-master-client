@@ -30,6 +30,7 @@ import {
   type WorldPreview,
   type WorldRequest,
 } from "../../src/shared/world-transfer";
+import { keptSecret } from "../../src/shared/kept-secret";
 
 // The device-hosted world: the same server the desktop app bundles, run by a
 // Node runtime inside this app (see android/.../WorldRuntime.java) and
@@ -359,13 +360,12 @@ export function createLocalWorld(deps: LocalWorldDeps) {
     try {
       const origin = await start();
       const grant = await deps.loginForToken(origin, input.username, input.password);
-      // The kept secret belongs to one account: signing back in as the
-      // same player keeps the minted one (or a later sign-in could not
-      // renew silently), while a different username must not inherit it.
+      // The form is only asked for once the minted secret no longer signs
+      // in (the password was changed inside the game), so a typed password
+      // that works shows the kept one stale; another account never
+      // inherits it (src/shared/kept-secret.ts).
       const previous = await deps.loadProfile().catch(() => null);
-      const secret =
-        previous && previous.username === grant.username ? previous.secret : "";
-      await adopt(grant, secret);
+      await adopt(grant, keptSecret(previous, grant.username, input.password) ?? "");
       return { ok: true, status: await status() };
     } catch (err) {
       return fail(err);
