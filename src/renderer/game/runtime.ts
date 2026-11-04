@@ -14,6 +14,7 @@ import { canStreamAudio, liveAudioUrl } from "./live-audio.js";
 import { isLiveNarrationPath } from "../../shared/live-audio.js";
 import { createDeferredPlay } from "../../shared/deferred-play.js";
 import { watchStreamEvent } from "./offer-watch.js";
+import { createSessionWatch, type SessionWatch } from "../../shared/session-watch.js";
 
 // Public static files of the host: no session needed, so the address is
 // rewritten in place and the browser loads them itself. Any query on the
@@ -38,6 +39,11 @@ let nativeFetch: typeof fetch | null = null;
 let nativeEventSource: typeof EventSource | null = null;
 let observer: MutationObserver | null = null;
 let mediaPatched = false;
+// The session the page holds at its world, watched through the answers it
+// gets (src/shared/session-watch.ts): one that ended on its own takes the
+// player to the app's home rather than to the server's login page.
+let sessionWatch: SessionWatch | null = null;
+let onSessionLost: (() => void) | null = null;
 // Pictures fetched with the player's token (portraits, uploads, generated
 // art) live as object URLs, kept in the ring in object-urls.ts: 256 entries
 // or 96 MB, whichever fills first, the oldest retired as newer ones arrive
@@ -114,8 +120,37 @@ function patchedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Res
   headers.set("authorization", `Bearer ${client.session.token}`);
   headers.set("x-odm-client", "shell");
   const target = `${client.origin}${path}`;
-  if (!(input instanceof Request)) return base(target, { ...init, headers, credentials: "omit" });
-  return rebuild(input, target).then((request) => base(request, { ...init, headers, credentials: "omit" }));
+  const answer = !(input instanceof Request)
+    ? base(target, { ...init, headers, credentials: "omit" })
+    : rebuild(input, target).then((request) => base(request, { ...init, headers, credentials: "omit" }));
+  watchSession(path, answer);
+  return answer;
+}
+
+// Hands one answer to the session watch. The page reads the body itself,
+// so /api/auth/me is read from a copy, taken before the page's own handlers
+// run (this one was attached first).
+function watchSession(path: string, answer: Promise<Response>): void {
+  const watch = sessionWatch;
+  if (!watch || !path.startsWith("/api/")) return;
+  void answer.then(
+    async (response) => {
+      let signedIn: boolean | undefined;
+      if (response.status === 200 && (path.split(/[?#]/)[0] ?? "") === "/api/auth/me") {
+        const copy = response.clone();
+        const body = (await copy.json().catch(() => null)) as { user?: unknown } | null;
+        if (body && typeof body === "object" && "user" in body) signedIn = !!body.user;
+      }
+      sessionSeen(watch, path, response.status, signedIn);
+    },
+    () => undefined,
+  );
+}
+
+function sessionSeen(watch: SessionWatch, path: string, status: number, signedIn?: boolean): void {
+  // An answer from a world already left says nothing about the one on screen.
+  if (watch !== sessionWatch || !watch.seen(path, status, signedIn)) return;
+  onSessionLost?.();
 }
 
 // The same request at another address. A Request's url is read-only and a
@@ -161,6 +196,7 @@ class HostEventSource extends EventTarget {
       // Not a host stream: hand the real thing back to the caller.
       return new real(this.url) as unknown as HostEventSource;
     }
+    const watch = sessionWatch;
     this.handle = client.stream(
       this.url,
       (event: SseEvent) => {
@@ -172,6 +208,8 @@ class HostEventSource extends EventTarget {
         if (event.event === "message") this.onmessage?.(message);
       },
       (open, stop?: StreamStop) => {
+        // The stream's own fetch goes to the host directly, past patchedFetch.
+        if (stop && watch) sessionSeen(watch, this.url, stop.status);
         this.readyState = stop ? 2 : open ? 1 : 0;
         const event = open ? new Event("open") : new CustomEvent<StreamStop | null>("error", { detail: stop ?? null });
         this.dispatchEvent(event);
@@ -529,8 +567,12 @@ export function installLocalAssets(): void {
   patchMediaSetters();
 }
 
-export function installRuntime(client: HostClient): void {
+// onSessionLost: the page's session at this world ended on its own (the
+// session watch above); called at most once per entry into a world.
+export function installRuntime(client: HostClient, options: { onSessionLost?: () => void } = {}): void {
   active = client;
+  sessionWatch = createSessionWatch();
+  onSessionLost = options.onSessionLost ?? null;
   keepObjectUrlsFor(client);
   guardBogusErrors();
   document.removeEventListener("click", onDownloadClick);
@@ -562,6 +604,8 @@ export function activeHost(): HostClient | null {
 // the object URLs stay for the next entry into the same host.
 export function uninstallRuntime(): void {
   active = null;
+  sessionWatch = null;
+  onSessionLost = null;
   document.removeEventListener("click", onDownloadClick);
   observer?.disconnect();
 }
