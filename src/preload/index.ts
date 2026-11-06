@@ -65,7 +65,7 @@ const bridge: OdmBridge = {
   shareStop: () => ipcRenderer.invoke("share:stop"),
   lanStart: () => ipcRenderer.invoke("share:lan-start"),
   lanStop: () => ipcRenderer.invoke("share:lan-stop"),
-  localAiScan: () => ipcRenderer.invoke("local-ai:scan"),
+  localAiScan: (gpuId?: string) => ipcRenderer.invoke("local-ai:scan", typeof gpuId === "string" ? gpuId : undefined),
   localAiInstall: (tierId: string) => ipcRenderer.invoke("local-ai:install", tierId),
   localAiInstallComfy: () => ipcRenderer.invoke("local-ai:install-comfy"),
   localAiUninstall: (component: "text" | "images") =>
