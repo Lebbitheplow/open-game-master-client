@@ -175,7 +175,7 @@ export class LocalAiManager {
       running: this.externalServer || (this.ready && this.child !== null && this.child.exitCode === null),
       external: this.externalServer,
       endpoint: LOCAL_AI_ENDPOINT,
-      engine: state ? describeEngine(readEngine(this.binDir, state.llamaTag), this.engineWhere) : "",
+      engine: state ? describeEngine(readEngine(this.binDir, state.llamaTag, process.platform), this.engineWhere) : "",
       busy: this.busy,
       progress: this.progress,
       error: this.error,
@@ -198,7 +198,7 @@ export class LocalAiManager {
   }
 
   private llamaServerPath(): string | null {
-    return findServer(this.binDir);
+    return findServer(this.binDir, process.platform);
   }
 
   // The catalog GGUFs live on Hugging Face, whose tree API publishes each
@@ -219,8 +219,9 @@ export class LocalAiManager {
   private async ensureLlama(hardware: HardwareInfo): Promise<void> {
     const plan = this.plan(hardware);
     if (!plan) throw new Error("Local AI is not supported on this platform yet.");
-    if (this.llamaServerPath() && engineCurrent(readEngine(this.binDir, this.state()?.llamaTag ?? ""), plan)) return;
+    if (this.llamaServerPath() && engineCurrent(readEngine(this.binDir, this.state()?.llamaTag ?? "", process.platform), plan)) return;
     await installEngine({
+      platform: process.platform,
       rootDir: this.rootDir,
       binDir: this.binDir,
       plan,
@@ -233,7 +234,7 @@ export class LocalAiManager {
   // unpack to (the CUDA runtime roughly doubles).
   private engineDiskGb(hardware: HardwareInfo): number {
     const plan = this.plan(hardware);
-    if (!plan || (this.llamaServerPath() && engineCurrent(readEngine(this.binDir, this.state()?.llamaTag ?? ""), plan))) return 0.5;
+    if (!plan || (this.llamaServerPath() && engineCurrent(readEngine(this.binDir, this.state()?.llamaTag ?? "", process.platform), plan))) return 0.5;
     return Math.max(1, (planDownloadMb(plan) * 3) / 1024);
   }
 
@@ -456,7 +457,7 @@ export class LocalAiManager {
   private async replaceWrongEngine(legacyTag: string): Promise<void> {
     const hardware = await this.currentHardware();
     const plan = this.plan(hardware);
-    const installed = readEngine(this.binDir, legacyTag);
+    const installed = readEngine(this.binDir, legacyTag, process.platform);
     if (!plan || !installed || sameBackend(installed, plan)) return;
     this.busy = "downloading";
     this.emit();
@@ -477,7 +478,7 @@ export class LocalAiManager {
   // integrated GPU from taking the model off the real card.
   private async deviceFor(hardware: HardwareInfo, bin: string, legacyTag: string): Promise<string> {
     const gpu = LocalAiManager.selectedGpu(hardware);
-    const engine = readEngine(this.binDir, legacyTag);
+    const engine = readEngine(this.binDir, legacyTag, process.platform);
     this.engineWhere = gpu?.name ?? "";
     if (!gpu || !engine) return "";
     const devices = await listDevices(bin);

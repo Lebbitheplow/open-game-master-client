@@ -3,11 +3,14 @@
 // integrated graphics beside an NVIDIA card ran the story model on the
 // integrated GPU, and every NVIDIA machine got the Vulkan build.
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { createRequire } from "node:module";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const { enginePlan, vulkanPlan, parseDevices, pickDevice, engineCurrent, cudaAtLeast, LLAMA_TAG } = require("../dist/main/local-ai/engine.js");
+const { enginePlan, vulkanPlan, parseDevices, pickDevice, engineCurrent, cudaAtLeast, findServer, readEngine, LLAMA_TAG } = require("../dist/main/local-ai/engine.js");
 const { windowsGpus, mergeNvidia, parseNvidiaSmi, hardwareFor, cudaFromDriver, isUnified } = require("../dist/main/local-ai/hardware.js");
 const { presetFor, utilityPresetSection, catalogEntry } = require("../dist/main/local-ai/catalog.js");
 
@@ -160,4 +163,20 @@ test("the preset pins the device for both models", () => {
   assert.match(story, /^device = CUDA0$/m);
   assert.match(utilityPresetSection("C:/u.gguf", "CUDA0"), /^device = CUDA0$/m);
   assert.doesNotMatch(presetFor(catalogEntry("gpt-oss-20b"), "C:/m.gguf", hardware), /^device/m, "no device: llama.cpp chooses");
+});
+
+test("the installed engine is read for the platform it is given, not the one running the test", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-engine-"));
+  try {
+    fs.mkdirSync(path.join(dir, "llama-b10621"));
+    fs.writeFileSync(path.join(dir, "llama-b10621", "llama-server.exe"), "");
+    assert.equal(findServer(dir, "win32"), path.join(dir, "llama-b10621", "llama-server.exe"));
+    assert.equal(findServer(dir, "linux"), null, "a Linux install looks for llama-server");
+    assert.deepEqual(readEngine(dir, "b10621", "win32"), { tag: "b10621", backend: "vulkan" }, "a legacy Windows install was the Vulkan build");
+    assert.equal(readEngine(dir, "b10621", "darwin"), null);
+    fs.writeFileSync(path.join(dir, "llama-b10621", "llama-server"), "");
+    assert.deepEqual(readEngine(dir, "b10621", "darwin"), { tag: "b10621", backend: "metal" }, "a legacy Mac install was the Metal build");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

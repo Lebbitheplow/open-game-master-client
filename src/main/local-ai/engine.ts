@@ -244,8 +244,8 @@ export interface InstalledEngine {
 
 const MARKER = "engine.json";
 
-export function findServer(dir: string): string | null {
-  const name = process.platform === "win32" ? "llama-server.exe" : "llama-server";
+export function findServer(dir: string, platform: string): string | null {
+  const name = platform === "win32" ? "llama-server.exe" : "llama-server";
   const stack = [dir];
   while (stack.length) {
     const current = stack.pop() as string;
@@ -266,15 +266,15 @@ export function findServer(dir: string): string | null {
 
 // The engine in binDir. One from before the marker existed was always the
 // Vulkan build (Metal on a Mac), at the tag state.json recorded.
-export function readEngine(binDir: string, legacyTag: string): InstalledEngine | null {
+export function readEngine(binDir: string, legacyTag: string, platform: string): InstalledEngine | null {
   try {
     const parsed = JSON.parse(fs.readFileSync(path.join(binDir, MARKER), "utf8")) as InstalledEngine;
     if (parsed?.tag && parsed.backend in LABELS) return parsed;
   } catch {
     // No marker: a legacy install, or none.
   }
-  if (!findServer(binDir)) return null;
-  return { tag: legacyTag || "unknown", backend: process.platform === "darwin" ? "metal" : "vulkan" };
+  if (!findServer(binDir, platform)) return null;
+  return { tag: legacyTag || "unknown", backend: platform === "darwin" ? "metal" : "vulkan" };
 }
 
 // Whether the installed engine is the right kind for the plan.
@@ -323,7 +323,7 @@ type Progress = (label: string, percent: number) => void;
 
 // Downloads and unpacks one plan into an empty folder: the first archive as
 // it comes, the runtime archives flattened in beside llama-server.
-async function unpackPlan(plan: EnginePlan, rootDir: string, target: string, onProgress: Progress): Promise<string> {
+async function unpackPlan(plan: EnginePlan, platform: string, rootDir: string, target: string, onProgress: Progress): Promise<string> {
   const total = Math.max(1, planDownloadMb(plan));
   let done = 0;
   const label = `Downloading the AI engine (llama.cpp ${LLAMA_TAG}, ${plan.label}, about ${total} MB)`;
@@ -341,7 +341,7 @@ async function unpackPlan(plan: EnginePlan, rootDir: string, target: string, onP
     // .tar.gz; bsdtar also reads the Windows .zip assets.
     if (i === 0) {
       await runFile("tar", ["-xf", archive, "-C", target]);
-      bin = findServer(target);
+      bin = findServer(target, platform);
       if (!bin) throw new Error("The llama.cpp archive did not contain llama-server.");
     } else {
       const extra = path.join(target, `.extra-${i}`);
@@ -361,6 +361,8 @@ async function unpackPlan(plan: EnginePlan, rootDir: string, target: string, onP
 // CUDA device (a driver that is missing or too old after all) is replaced
 // by the Vulkan build, which runs on every vendor's driver.
 export async function installEngine(opts: {
+  // The platform the plan was made for, which names the binary.
+  platform: string;
   rootDir: string;
   binDir: string;
   plan: EnginePlan;
@@ -374,7 +376,7 @@ export async function installEngine(opts: {
   };
   try {
     fresh();
-    let bin = await unpackPlan(opts.plan, opts.rootDir, staging, opts.onProgress);
+    let bin = await unpackPlan(opts.plan, opts.platform, opts.rootDir, staging, opts.onProgress);
     let backend = opts.plan.backend;
     if (backend.startsWith("cuda")) {
       opts.onProgress("Checking the AI engine can see your graphics card", 100);
@@ -382,7 +384,7 @@ export async function installEngine(opts: {
       if (!devices.some((device) => device.name.startsWith("CUDA"))) {
         if (!opts.fallback) throw new Error("The CUDA build of llama.cpp could not find your NVIDIA card. Update the NVIDIA driver and install again.");
         fresh();
-        bin = await unpackPlan(opts.fallback, opts.rootDir, staging, opts.onProgress);
+        bin = await unpackPlan(opts.fallback, opts.platform, opts.rootDir, staging, opts.onProgress);
         backend = opts.fallback.backend;
       }
     }
