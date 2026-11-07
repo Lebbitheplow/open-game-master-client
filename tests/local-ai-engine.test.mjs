@@ -10,7 +10,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const { enginePlan, vulkanPlan, parseDevices, pickDevice, engineCurrent, cudaAtLeast, findServer, readEngine, LLAMA_TAG } = require("../dist/main/local-ai/engine.js");
+const { enginePlan, vulkanPlan, parseDevices, pickDevice, engineCurrent, cudaAtLeast, findServer, readEngine, swapInEngine, LLAMA_TAG } = require("../dist/main/local-ai/engine.js");
 const { windowsGpus, mergeNvidia, parseNvidiaSmi, hardwareFor, cudaFromDriver, isUnified } = require("../dist/main/local-ai/hardware.js");
 const { presetFor, utilityPresetSection, catalogEntry } = require("../dist/main/local-ai/catalog.js");
 
@@ -176,6 +176,37 @@ test("the installed engine is read for the platform it is given, not the one run
     assert.equal(readEngine(dir, "b10621", "darwin"), null);
     fs.writeFileSync(path.join(dir, "llama-b10621", "llama-server"), "");
     assert.deepEqual(readEngine(dir, "b10621", "darwin"), { tag: "b10621", backend: "metal" }, "a legacy Mac install was the Metal build");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a new engine that cannot take the old one's place leaves the old engine whole", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "odm-engine-"));
+  const bin = path.join(dir, "bin");
+  const staging = `${bin}.new`;
+  try {
+    fs.mkdirSync(bin);
+    fs.writeFileSync(path.join(bin, "llama-server"), "old");
+    fs.mkdirSync(staging);
+    fs.writeFileSync(path.join(staging, "llama-server"), "new");
+    // Windows refuses the move while a file in the new folder is held open.
+    const locked = {
+      ...fs,
+      existsSync: fs.existsSync,
+      rmSync: fs.rmSync,
+      renameSync: (from, to) => {
+        if (from === staging) throw Object.assign(new Error("EPERM: operation not permitted"), { code: "EPERM" });
+        fs.renameSync(from, to);
+      },
+    };
+    assert.throws(() => swapInEngine(staging, bin, locked), /EPERM/);
+    assert.equal(fs.readFileSync(path.join(bin, "llama-server"), "utf8"), "old", "the engine that worked is still there");
+
+    swapInEngine(staging, bin);
+    assert.equal(fs.readFileSync(path.join(bin, "llama-server"), "utf8"), "new");
+    assert.equal(fs.existsSync(`${bin}.old`), false, "the old engine is cleared once the new one is in place");
+    assert.equal(fs.existsSync(staging), false);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

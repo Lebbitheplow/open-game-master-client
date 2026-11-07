@@ -355,6 +355,31 @@ async function unpackPlan(plan: EnginePlan, platform: string, rootDir: string, t
   return bin as string;
 }
 
+type SwapFs = Pick<typeof fs, "existsSync" | "renameSync" | "rmSync">;
+
+// Puts the staged engine where the current one is. The current one is moved
+// aside first and put back if the staged one cannot take its place: deleting
+// it in place can stop partway on Windows (a file the running server or an
+// antivirus scan holds open), which left neither engine whole. A leftover
+// aside folder is cleared by the next install.
+export function swapInEngine(staging: string, binDir: string, ops: SwapFs = fs): void {
+  const aside = `${binDir}.old`;
+  ops.rmSync(aside, { recursive: true, force: true });
+  const had = ops.existsSync(binDir);
+  if (had) ops.renameSync(binDir, aside);
+  try {
+    ops.renameSync(staging, binDir);
+  } catch (err) {
+    if (had) ops.renameSync(aside, binDir);
+    throw err;
+  }
+  try {
+    ops.rmSync(aside, { recursive: true, force: true });
+  } catch {
+    // Still held open: the new engine is in place, and the next install clears it.
+  }
+}
+
 // Installs the plan's engine beside the current one and swaps it in only
 // once it is whole, so a failed or cancelled download never leaves the
 // player without the engine that worked. A CUDA build that cannot see any
@@ -390,8 +415,7 @@ export async function installEngine(opts: {
     }
     const engine: InstalledEngine = { tag: LLAMA_TAG, backend, ...(backend !== opts.plan.backend ? { wanted: opts.plan.backend } : {}) };
     fs.writeFileSync(path.join(staging, MARKER), JSON.stringify(engine, null, 2));
-    fs.rmSync(opts.binDir, { recursive: true, force: true });
-    fs.renameSync(staging, opts.binDir);
+    swapInEngine(staging, opts.binDir);
     return engine;
   } catch (err) {
     fs.rmSync(staging, { recursive: true, force: true });
