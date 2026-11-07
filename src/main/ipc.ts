@@ -1587,9 +1587,9 @@ export function registerIpc(ctx: ShellContext): ShellIpc {
     else await shell.openPath(app.getPath("userData"));
   });
 
-  shellIpc.handle("local-ai:scan", async () => {
+  shellIpc.handle("local-ai:scan", async (_event, gpuId: unknown) => {
     try {
-      const result = await localAi.scan();
+      const result = await localAi.scan(typeof gpuId === "string" ? str(gpuId, 200) : undefined);
       return { ok: true, ...result };
     } catch (err) {
       return fail(err);

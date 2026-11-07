@@ -201,7 +201,28 @@ export interface ShellShareStatus extends TunnelStatus {
   refusedCodes?: string[];
 }
 
-// What the hardware scan learned; sizes in whole GB.
+// One graphics adapter the scan found. Sizes in GB, one decimal.
+export interface GpuInfo {
+  // Stable across scans: the NVIDIA UUID, the PCI slot, or the adapter name.
+  id: string;
+  name: string;
+  vendor: "" | "nvidia" | "amd" | "intel" | "apple";
+  // Dedicated memory; for an integrated adapter only its carve-out.
+  vramGb: number;
+  // Built into the processor, sharing system RAM.
+  integrated: boolean;
+  // NVIDIA only: compute capability, the driver version, the newest CUDA
+  // the driver runs ("12.8", "13.0"; text, since 13.10 is not 13.1), and
+  // nvidia-smi's index.
+  computeCap?: number;
+  driverVersion?: string;
+  cudaVersion?: string;
+  index?: number;
+}
+
+// What the hardware scan learned; sizes in whole GB. The single-GPU fields
+// (vramGb, gpuName, gpuVendor, gpuCompute, unifiedMemory) describe the GPU
+// the local AI runs on: the player's pick, or the best one found.
 export interface HardwareInfo {
   platform: string;
   arch: string;
@@ -216,6 +237,10 @@ export interface HardwareInfo {
   // RTX 5090), which picks the CUDA build of torch. Absent when unknown.
   gpuCompute?: number;
   unifiedMemory: boolean;
+  // Every adapter found, and the id of the one the fields above describe.
+  // Absent from hosts that do not scan (the phone).
+  gpus?: GpuInfo[];
+  gpuId?: string;
 }
 
 // One entry of the curated model catalog, sized against this machine.
@@ -242,6 +267,9 @@ export interface LocalAiStatus {
   external: boolean;
   // Where the device world's text AI is pointed (http://127.0.0.1:8001/v1).
   endpoint: string;
+  // The engine build and where it runs, e.g. "llama.cpp b12110, CUDA 13 on
+  // NVIDIA GeForce RTX 4070"; "" when not installed.
+  engine?: string;
   busy: "" | "scanning" | "downloading" | "starting";
   progress: { label: string; percent: number } | null;
   error: string;
@@ -647,7 +675,9 @@ export interface OdmBridge {
   // phone's world is on its Wi-Fi already and answers that it is.
   lanStart(): Promise<Result<{ status: LocalStatus }>>;
   lanStop(): Promise<Result<{ status: LocalStatus }>>;
-  localAiScan(): Promise<Result<{ hardware: HardwareInfo; tiers: LocalAiTier[] }>>;
+  // gpuId picks the graphics card the local AI runs on (kept for later
+  // scans); omitted keeps the last pick, or the best card found.
+  localAiScan(gpuId?: string): Promise<Result<{ hardware: HardwareInfo; tiers: LocalAiTier[] }>>;
   // warning is "" or a sentence: the install worked but wiring the world's
   // settings to it failed and needs a hand.
   localAiInstall(tierId: string): Promise<Result<{ status: LocalAiStatus; warning: string }>>;
