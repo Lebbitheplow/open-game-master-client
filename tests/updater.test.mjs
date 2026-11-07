@@ -1238,3 +1238,30 @@ test("a background check that fails is retried and logged, not dropped", async (
   assert.equal(calls, 2);
   assert.match(lines[0], /Background update check failed: getaddrinfo ENOTFOUND/);
 });
+
+test("the background recheck waits while an install is under way", async () => {
+  const { Updater } = await import("../dist/main/updater.js");
+  let calls = 0;
+  const updater = new Updater("managed", "0.12.0", async () => {
+    calls += 1;
+    return "0.12.1";
+  }, 0, fakeHost().host);
+  updater.recheckMs = 5;
+  // A download the player started: a failed check reported on electron-
+  // updater's "error" event would otherwise mark it failed.
+  updater.state = { ...updater.progress(), state: "downloading", percent: 40 };
+  const hold = setInterval(() => {}, 1000);
+  try {
+    updater.checkOnStartup();
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    assert.equal(calls, 0, "no check while the download runs");
+    assert.equal(updater.progress().state, "downloading");
+    updater.state = { ...updater.progress(), state: "idle", percent: 0 };
+    const progress = await new Promise((resolve) => updater.onStatus(() => resolve(updater.progress())));
+    assert.equal(progress.state, "available", "the next recheck runs once it is done");
+    assert.ok(calls >= 1);
+  } finally {
+    clearInterval(hold);
+    updater.recheckMs = 24 * 60 * 60_000;
+  }
+});

@@ -1134,6 +1134,13 @@ export class Updater {
   }
 
   private async backgroundCheck(attempt: number): Promise<void> {
+    // An install under way is left alone: electron-updater reports a failed
+    // check on the same "error" event as a failed download, so a recheck
+    // that hit a network blip mid-download marked that download failed.
+    if (this.state.state === "downloading" || this.state.state === "installing" || this.state.state === "ready") {
+      this.checkAgainIn(this.recheckMs, 0);
+      return;
+    }
     try {
       const status = await this.checkForUpdates();
       // An install under way owns the progress line.
