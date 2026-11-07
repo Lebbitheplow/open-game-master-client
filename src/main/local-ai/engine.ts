@@ -91,9 +91,23 @@ function build(platform: string, backend: EngineBackend): EnginePlan {
 // older than the toolkit cannot compile it ("the provided PTX was compiled
 // with an unsupported toolchain" on the first request), so CUDA's
 // minor-version compatibility does not hold here.
-function cudaToolkit(platform: string, backend: "cuda13" | "cuda12"): number {
-  if (backend === "cuda13") return 13.4;
-  return platform === "linux" ? 12.8 : 12.4;
+function cudaToolkit(platform: string, backend: "cuda13" | "cuda12"): string {
+  if (backend === "cuda13") return "13.4";
+  return platform === "linux" ? "12.8" : "12.4";
+}
+
+// Whether a CUDA version ("13.10", as nvidia-smi prints it) is at least
+// another, part by part: read as decimals 13.10 would be 13.1 and fall below
+// 13.4.
+export function cudaAtLeast(version: string | number | undefined, min: string): boolean {
+  const parts = (value: string) => value.split(".").map((part) => parseInt(part, 10) || 0);
+  const have = parts(String(version ?? ""));
+  const want = parts(min);
+  for (let i = 0; i < Math.max(have.length, want.length); i++) {
+    const diff = (have[i] ?? 0) - (want[i] ?? 0);
+    if (diff !== 0) return diff > 0;
+  }
+  return true;
 }
 
 // What to install for the card the local AI runs on. null where the app has
@@ -102,11 +116,11 @@ export function enginePlan(platform: string, arch: string, gpu: GpuInfo | null |
   if (!engineSupported(platform, arch)) return null;
   if (platform === "darwin") return build(platform, "metal");
   if (gpu?.vendor === "nvidia") {
-    const cuda = gpu.cudaVersion ?? 0;
+    const cuda = gpu.cudaVersion;
     const cc = gpu.computeCap ?? 0;
     // CUDA 13 dropped Maxwell, Pascal and Volta (compute capability < 7.5).
-    if (cuda >= cudaToolkit(platform, "cuda13") && (cc === 0 || cc >= 7.5)) return build(platform, "cuda13");
-    if (cuda >= cudaToolkit(platform, "cuda12") && (cc === 0 || cc >= 5)) return build(platform, "cuda12");
+    if (cudaAtLeast(cuda, cudaToolkit(platform, "cuda13")) && (cc === 0 || cc >= 7.5)) return build(platform, "cuda13");
+    if (cudaAtLeast(cuda, cudaToolkit(platform, "cuda12")) && (cc === 0 || cc >= 5)) return build(platform, "cuda12");
   }
   // AMD and Intel run best and most reliably on Vulkan (the ROCm and SYCL
   // builds need runtimes most machines do not have); so does an NVIDIA card

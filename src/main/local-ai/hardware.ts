@@ -23,20 +23,21 @@ const round1 = (gb: number): number => Math.round(gb * 10) / 10;
 // ---------- NVIDIA ----------
 
 // nvidia-smi's own header names the newest CUDA the driver runs; where it
-// cannot be read, the driver branch says the same.
-export function cudaFromDriver(driver: string): number {
+// cannot be read, the driver branch says the same. Kept as the text
+// nvidia-smi prints ("12.8", "13.10"): as a decimal, 13.10 would read 13.1.
+export function cudaFromDriver(driver: string): string {
   const major = Number(String(driver).split(".")[0]);
-  if (!Number.isFinite(major)) return 0;
-  const table: Array<[number, number]> = [
-    [580, 13.0], [575, 12.9], [570, 12.8], [560, 12.6], [555, 12.5], [550, 12.4],
-    [545, 12.3], [535, 12.2], [530, 12.1], [525, 12.0], [450, 11.0],
+  if (!Number.isFinite(major)) return "";
+  const table: Array<[number, string]> = [
+    [580, "13.0"], [575, "12.9"], [570, "12.8"], [560, "12.6"], [555, "12.5"], [550, "12.4"],
+    [545, "12.3"], [535, "12.2"], [530, "12.1"], [525, "12.0"], [450, "11.0"],
   ];
-  return table.find(([min]) => major >= min)?.[1] ?? 0;
+  return table.find(([min]) => major >= min)?.[1] ?? "";
 }
 
 // One CSV row per card from
 // --query-gpu=index,uuid,name,memory.total,compute_cap,driver_version.
-export function parseNvidiaSmi(csv: string, cudaVersion: number): GpuInfo[] {
+export function parseNvidiaSmi(csv: string, cudaVersion: string): GpuInfo[] {
   const gpus: GpuInfo[] = [];
   for (const line of csv.split(/\r?\n/)) {
     const cells = line.split(",").map((cell) => cell.trim());
@@ -89,10 +90,10 @@ async function nvidiaGpus(): Promise<GpuInfo[]> {
       return [];
     }
   }
-  let cuda = 0;
+  let cuda = "";
   try {
     const { stdout } = await run("nvidia-smi", [], { timeout: 15_000, windowsHide: true });
-    cuda = Number(/CUDA Version:\s*([\d.]+)/.exec(stdout)?.[1] ?? 0) || 0;
+    cuda = /CUDA Version:\s*(\d+\.\d+)/.exec(stdout)?.[1] ?? "";
   } catch {
     // The driver branch stands in.
   }

@@ -7,13 +7,13 @@ import { createRequire } from "node:module";
 import test from "node:test";
 
 const require = createRequire(import.meta.url);
-const { enginePlan, vulkanPlan, parseDevices, pickDevice, engineCurrent, LLAMA_TAG } = require("../dist/main/local-ai/engine.js");
+const { enginePlan, vulkanPlan, parseDevices, pickDevice, engineCurrent, cudaAtLeast, LLAMA_TAG } = require("../dist/main/local-ai/engine.js");
 const { windowsGpus, mergeNvidia, parseNvidiaSmi, hardwareFor, cudaFromDriver, isUnified } = require("../dist/main/local-ai/hardware.js");
 const { presetFor, utilityPresetSection, catalogEntry } = require("../dist/main/local-ai/catalog.js");
 
 const rtx = (extra = {}) => ({
   id: "GPU-1", name: "NVIDIA GeForce RTX 4070 Laptop GPU", vendor: "nvidia", vramGb: 8, integrated: false,
-  computeCap: 8.9, cudaVersion: 13.4, index: 0, ...extra,
+  computeCap: 8.9, cudaVersion: "13.4", index: 0, ...extra,
 });
 
 test("an NVIDIA card gets the CUDA build its driver can run, else Vulkan", () => {
@@ -22,12 +22,23 @@ test("an NVIDIA card gets the CUDA build its driver can run, else Vulkan", () =>
   assert.equal(enginePlan("linux", "x64", rtx()).files[1], `cudart-llama-${LLAMA_TAG}-bin-ubuntu-cuda-13.4-x64.tar.gz`, "the runtime comes along");
   // A driver that runs CUDA 13.0 is older than the 13.4 toolkit: its PTX
   // would not compile, so the CUDA 12 build it can run.
-  assert.equal(enginePlan("win32", "x64", rtx({ cudaVersion: 13.0 })).backend, "cuda12");
-  assert.equal(enginePlan("linux", "x64", rtx({ cudaVersion: 12.6 })).backend, "vulkan", "Linux's CUDA 12 build is 12.8");
-  assert.equal(enginePlan("win32", "x64", rtx({ cudaVersion: 12.6 })).backend, "cuda12", "Windows' is 12.4");
+  assert.equal(enginePlan("win32", "x64", rtx({ cudaVersion: "13.0" })).backend, "cuda12");
+  assert.equal(enginePlan("linux", "x64", rtx({ cudaVersion: "12.6" })).backend, "vulkan", "Linux's CUDA 12 build is 12.8");
+  assert.equal(enginePlan("win32", "x64", rtx({ cudaVersion: "12.6" })).backend, "cuda12", "Windows' is 12.4");
   // CUDA 13 dropped Pascal.
   assert.equal(enginePlan("win32", "x64", rtx({ computeCap: 6.1, name: "GeForce GTX 1080" })).backend, "cuda12");
-  assert.equal(enginePlan("win32", "x64", rtx({ cudaVersion: 0 })).backend, "vulkan", "no working driver");
+  assert.equal(enginePlan("win32", "x64", rtx({ cudaVersion: "" })).backend, "vulkan", "no working driver");
+});
+
+test("CUDA versions compare part by part, so 13.10 is past 13.4", () => {
+  assert.equal(cudaAtLeast("13.10", "13.4"), true);
+  assert.equal(cudaAtLeast("13.4", "13.4"), true);
+  assert.equal(cudaAtLeast("13.3", "13.4"), false);
+  assert.equal(cudaAtLeast("12.10", "12.8"), true);
+  assert.equal(cudaAtLeast("", "12.4"), false);
+  assert.equal(cudaAtLeast(undefined, "12.4"), false);
+  assert.equal(enginePlan("linux", "x64", rtx({ cudaVersion: "13.10" })).backend, "cuda13");
+  assert.equal(enginePlan("linux", "x64", rtx({ cudaVersion: "12.10" })).backend, "cuda12");
 });
 
 test("AMD, Intel and no GPU run Vulkan; Apple Silicon Metal; others nothing", () => {
@@ -88,14 +99,14 @@ test("twin cards: CUDA by nvidia-smi's index, Vulkan by memory", () => {
 });
 
 test("nvidia-smi rows, names with commas included", () => {
-  const rows = parseNvidiaSmi("0, GPU-aaa, NVIDIA GeForce RTX 4070 Laptop GPU, 8188, 8.9, 581.42\n1, GPU-bbb, NVIDIA RTX A6000, Ada, 49140, 8.6, 581.42\n", 13.0);
+  const rows = parseNvidiaSmi("0, GPU-aaa, NVIDIA GeForce RTX 4070 Laptop GPU, 8188, 8.9, 581.42\n1, GPU-bbb, NVIDIA RTX A6000, Ada, 49140, 8.6, 581.42\n", "13.0");
   assert.equal(rows.length, 2);
-  assert.deepEqual(rows[0], { id: "GPU-aaa", name: "NVIDIA GeForce RTX 4070 Laptop GPU", vendor: "nvidia", vramGb: 8, integrated: false, computeCap: 8.9, driverVersion: "581.42", cudaVersion: 13, index: 0 });
+  assert.deepEqual(rows[0], { id: "GPU-aaa", name: "NVIDIA GeForce RTX 4070 Laptop GPU", vendor: "nvidia", vramGb: 8, integrated: false, computeCap: 8.9, driverVersion: "581.42", cudaVersion: "13.0", index: 0 });
   assert.equal(rows[1].name, "NVIDIA RTX A6000, Ada");
   assert.equal(rows[1].vramGb, 48);
-  assert.equal(parseNvidiaSmi("0, GPU-c, Tesla P40, 24576, , 535.54", 0)[0].cudaVersion, 12.2, "the driver branch stands in");
-  assert.equal(cudaFromDriver("580.65.06"), 13);
-  assert.equal(cudaFromDriver("garbage"), 0);
+  assert.equal(parseNvidiaSmi("0, GPU-c, Tesla P40, 24576, , 535.54", "")[0].cudaVersion, "12.2", "the driver branch stands in");
+  assert.equal(cudaFromDriver("580.65.06"), "13.0");
+  assert.equal(cudaFromDriver("garbage"), "");
 });
 
 const windowsLaptop = {

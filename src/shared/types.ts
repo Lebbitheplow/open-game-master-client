@@ -212,10 +212,11 @@ export interface GpuInfo {
   // Built into the processor, sharing system RAM.
   integrated: boolean;
   // NVIDIA only: compute capability, the driver version, the newest CUDA
-  // the driver runs (12.8, 13.0), and nvidia-smi's index.
+  // the driver runs ("12.8", "13.0"; text, since 13.10 is not 13.1), and
+  // nvidia-smi's index.
   computeCap?: number;
   driverVersion?: string;
-  cudaVersion?: number;
+  cudaVersion?: string;
   index?: number;
 }
 
