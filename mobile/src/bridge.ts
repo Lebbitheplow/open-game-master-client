@@ -872,6 +872,21 @@ async function savePublishedCodes(codes: readonly string[]): Promise<void> {
   await Preferences.set({ key: PUBLISHED_CODES_KEY, value: JSON.stringify(codes) });
 }
 
+// Whether the phone's own world is reading an adventure PDF import (server
+// 0.34.0's /api/pdf-imports; an older world answers 404, which is "no").
+async function worldImporting(): Promise<boolean> {
+  try {
+    const profile = await loadLocalProfile();
+    const status = await localWorld.status();
+    if (!profile?.token || !status.origin || status.state !== "running") return false;
+    const reply = await fetchJson(`${status.origin}/api/pdf-imports`, { headers: { authorization: `Bearer ${profile.token}` }, timeoutMs: 5_000 });
+    const imports = (reply.data as { imports?: Array<{ state?: string }> } | null)?.imports ?? [];
+    return reply.status === 200 && imports.some((entry) => entry.state === "working" || entry.state === "ready");
+  } catch {
+    return false;
+  }
+}
+
 async function publishRoomCodes(url: string): Promise<void> {
   const profile = await loadLocalProfile();
   const status = await localWorld.status();
@@ -1074,6 +1089,7 @@ const idleWorld = createIdleStopper({
       nativeWorldOpen: window.odmMountedHostId === LOCAL_HOST_ID,
       webViewOpen: gameWebViewOpen,
       ownWorldLeft: closedOwnWorld,
+      importing: await worldImporting(),
     };
   },
   async stop() {
