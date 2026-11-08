@@ -65,7 +65,10 @@ The latest stable release is on the
 [Releases page](https://github.com/Lebbitheplow/open-game-master-client/releases/latest).
 Every build ships first as a beta (marked Pre-release there) and is promoted to stable
 unchanged once it holds up; the desktop app offers the betas too with App settings >
-This app > Beta updates. How the channels work:
+This app > Beta updates. To download the current beta, use the
+[beta channel](https://opengamemaster.com/download/#beta) on opengamemaster.com: it
+lists every file of the newest pre-release while one is newer than the stable release,
+and says when there is none. How the channels work:
 [releases.md](https://github.com/Lebbitheplow/open-game-master/blob/main/docs/releases.md).
 More help lives in the [knowledge base](https://opengamemaster.com/guide/):
 installing on [Windows](https://opengamemaster.com/guide/desktop/install-windows/),
