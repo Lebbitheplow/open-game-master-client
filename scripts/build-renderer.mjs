@@ -67,7 +67,9 @@ export function preactDir() {
 // consults (src/shared/local-assets.ts): a host folder with a trailing
 // slash to the file names directly in it, sorted, so a path the app was
 // not built with still goes to the host.
-export const LOCAL_ASSET_FOLDERS = ["assets", "fx", "dice-box", "sidebar-icons"];
+// pdfjs: the PDF reader's worker and data files (server 0.34.0's adventure
+// import reads books in the page, so the app carries them to read offline).
+export const LOCAL_ASSET_FOLDERS = ["assets", "fx", "dice-box", "sidebar-icons", "pdfjs"];
 
 export function localAssetManifest(server) {
   const manifest = {};
