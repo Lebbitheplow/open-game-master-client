@@ -1711,6 +1711,11 @@ html[data-theme="light"] .tt-first > .topbar.tt-header .wordmark { color: var(--
    again keeps a table that ends at the bottom of the window. */
 .game-root { --game-top: 0px; }
 .game-root {
+  /* The server's names for the interface face and the fixed-width face
+     (its layout.tsx). The two below them are what it called them before
+     the interface face changed, for a build against an older server. */
+  --font-ui: var(--font-sans);
+  --font-code-face: var(--font-mono);
   --font-geist-sans: var(--font-sans);
   --font-geist-mono: var(--font-mono);
   --font-source-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
