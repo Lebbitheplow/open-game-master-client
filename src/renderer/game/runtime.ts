@@ -9,6 +9,7 @@ import type { SseEvent } from "../../shared/sse.js";
 import { hostRelativePath } from "../../shared/host-fetch.js";
 import { rewriteCssUrls, rootRelativeCssUrls } from "../../shared/css-urls.js";
 import { localAsset } from "./local-assets.js";
+import { answersLocally, assetContentType } from "../../shared/local-assets.js";
 import { forgetObjectUrls, hold, keepObjectUrlsFor, objectUrlFor } from "./object-urls.js";
 import { canStreamAudio, liveAudioUrl } from "./live-audio.js";
 import { isLiveNarrationPath } from "../../shared/live-audio.js";
@@ -116,15 +117,55 @@ function patchedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Res
     (window as { odmShell?: { showServers?: () => void } }).odmShell?.showServers?.();
     return Promise.resolve(new Response(null, { status: 204 }));
   }
-  const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
-  headers.set("authorization", `Bearer ${client.session.token}`);
-  headers.set("x-odm-client", "shell");
-  const target = `${client.origin}${path}`;
-  const answer = !(input instanceof Request)
-    ? base(target, { ...init, headers, credentials: "omit" })
-    : rebuild(input, target).then((request) => base(request, { ...init, headers, credentials: "omit" }));
-  watchSession(path, answer);
-  return answer;
+  const toHost = (): Promise<Response> => {
+    const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+    headers.set("authorization", `Bearer ${client.session.token}`);
+    headers.set("x-odm-client", "shell");
+    const target = `${client.origin}${path}`;
+    const answer = !(input instanceof Request)
+      ? base(target, { ...init, headers, credentials: "omit" })
+      : rebuild(input, target).then((request) => base(request, { ...init, headers, credentials: "omit" }));
+    watchSession(path, answer);
+    return answer;
+  };
+  // A file the app carries is read from the app, not asked of the host
+  // (src/shared/local-assets.ts answersLocally): by fetch where the page may
+  // fetch the files beside it, over the shell's bridge where it may not. A
+  // copy that will not read falls back to the host, as it always went.
+  const method = init?.method ?? (input instanceof Request ? input.method : "GET");
+  if (!answersLocally(method, path)) return toHost();
+  const own = localAsset(path);
+  if (!own) return toHost();
+  const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+  const reading = ownFilesFetchable()
+    ? base(own, { signal: signal ?? undefined }).then((response) => (response.ok ? response : null))
+    : readOverBridge(path);
+  return reading.then(
+    (response) => response ?? toHost(),
+    (error: unknown) => {
+      if (signal?.aborted) throw error;
+      return toHost();
+    },
+  );
+}
+
+// Whether the page may fetch the files beside it. The Android app's page is
+// served (https://localhost) and may; the desktop's is a file, which fetch
+// does not read and the page's own policy (connect-src) does not allow.
+function ownFilesFetchable(): boolean {
+  const protocol = window.location.protocol;
+  return protocol === "https:" || protocol === "http:";
+}
+
+// The desktop's way to a file it carries: the shell reads it (window.odm
+// .readAsset, src/main/local-asset-read.ts) and the page gets the answer a
+// host would have given.
+function readOverBridge(path: string): Promise<Response | null> {
+  const read = window.odm?.readAsset;
+  if (!read) return Promise.resolve(null);
+  return read(path).then((bytes) =>
+    bytes ? new Response(bytes as BodyInit, { status: 200, headers: { "content-type": assetContentType(path) } }) : null,
+  );
 }
 
 // Hands one answer to the session watch. The page reads the body itself,

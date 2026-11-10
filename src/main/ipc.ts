@@ -52,6 +52,7 @@ import { landingPath, safeInnerPath } from "../shared/open-path";
 import { appIconPath } from "./app-icon";
 import { createDesktopHomeFeed, fetchCoverImage } from "./home-feed";
 import { createDesktopOfferNotices } from "./offer-notices";
+import { createLocalAssetReader } from "./local-asset-read";
 import type { LocalAiManager } from "./local-ai/manager";
 import { unwireImageAi, wireImageAi, wireTextAi } from "./local-ai/wiring";
 import type { LocalServer } from "./local-server";
@@ -254,6 +255,11 @@ export function registerIpc(ctx: ShellContext): ShellIpc {
     const token = id ? store.token(id) : null;
     return origin && token ? { origin, token } : null;
   });
+  // A picture the app carries, for the game screens' fetch (the board's
+  // painter): read from the bundle instead of asked of the host
+  // (src/main/local-asset-read.ts).
+  const readLocalAsset = createLocalAssetReader(path.join(__dirname, "..", "renderer"));
+  shellIpc.handle("asset:read", (_event, hostPath: unknown) => readLocalAsset(hostPath));
   // A host document the game screens ask to open (a lore entry's PDF): the
   // shell fetches it with the session of the host on screen and hands it to
   // the system viewer. The page cannot do it itself: a link would open the

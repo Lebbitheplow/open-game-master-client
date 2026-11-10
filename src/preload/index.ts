@@ -42,6 +42,7 @@ const bridge: OdmBridge = {
   offerNotice: (notice, cardInView) => ipcRenderer.invoke("offer:notify", notice, cardInView),
   clearOfferNotice: (offerId: string) => ipcRenderer.invoke("offer:clear", offerId),
   openDocument: (path: string) => ipcRenderer.invoke("doc:open", path),
+  readAsset: (hostPath: string) => ipcRenderer.invoke("asset:read", hostPath),
   credentialStorage: () => ipcRenderer.invoke("prefs:credentials"),
   setKeepSignIns: (keep: boolean) => ipcRenderer.invoke("prefs:set-keep-sign-ins", keep),
   portalMode: () => ipcRenderer.invoke("prefs:portal"),

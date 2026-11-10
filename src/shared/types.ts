@@ -544,6 +544,11 @@ export interface OdmBridge {
   // Opens a host document (a PDF page set) with the system viewer
   // (phase 21). Absent where the platform's own viewer will do.
   openDocument?(path: string): Promise<boolean>;
+  // A picture the app carries beside its game bundle, by its host path, as
+  // bytes; null when the app does not carry it. Desktop only: its page is a
+  // file and cannot fetch the files beside it, where the phone's page can
+  // (src/shared/local-assets.ts answersLocally).
+  readAsset?(hostPath: string): Promise<Uint8Array | null>;
   // The desktop's game screens say which host they show, so a document the
   // page asks to open is fetched with that host's session (doc:open). The
   // phone asks for notification permission there, on entering a world.
