@@ -142,6 +142,10 @@ export interface LocalWorldDeps {
   loadProfile(): Promise<LocalProfile | null>;
   saveProfile(profile: LocalProfile | null): Promise<void>;
   loginForToken(origin: string, username: string, password: string): Promise<TokenGrant>;
+  // Sets a new password for the world's owner with the setup code and signs
+  // in with it (the server's /api/auth/recover-owner); throws on a world
+  // too old to offer it. Absent, a stale secret leaves the sign-in form.
+  recoverOwner?(origin: string, input: { username: string; password: string; setupCode: string }): Promise<TokenGrant>;
   registerAccount(
     origin: string,
     input: { username: string; password: string; inviteCode: string; setupCode?: string },
@@ -281,10 +285,31 @@ export function createLocalWorld(deps: LocalWorldDeps) {
         const grant = await deps.loginForToken(origin, profile.username, profile.secret);
         return await adopt(grant, profile.secret);
       } catch {
-        // Password changed inside the game; fall through to the form.
+        // Password changed inside the game, or the host reset their own
+        // account (issue 909). Nobody was shown the secret, so nothing they
+        // could type would open the world: the setup code sets a new one.
+        return recoverOwner(origin, profile.username);
       }
     }
     return null;
+  }
+
+  // A new made-up password for the world's owner, kept before the world
+  // hears it so a lost answer still signs in next time. Only on a world
+  // that says it has its owner, and only when the native side hands over
+  // the setup code; null leaves the sign-in form.
+  async function recoverOwner(origin: string, username: string): Promise<LocalProfile | null> {
+    if (!deps.recoverOwner || (await awaitsOwner(origin)) !== false) return null;
+    const setupCode = (await deps.plugin.status().catch(() => null))?.setupCode ?? "";
+    if (!setupCode) return null;
+    const secret = deps.randomSecret();
+    await deps.saveProfile({ username, secret, token: "", tokenExpiresAt: "" });
+    try {
+      const grant = await deps.recoverOwner(origin, { username, password: secret, setupCode });
+      return await adopt(grant, secret);
+    } catch {
+      return null;
+    }
   }
 
   // Whether the running world still waits for its owner's account, as the
