@@ -28,7 +28,8 @@ function harness({ profile = null, token = null, valid = false, accounts = {}, s
     recover: async (username, password) => {
       calls.push(`recover:${username}`);
       const owner = Object.keys(world.accounts)[0];
-      if (!canRecover || !owner) throw new Error("Not found.");
+      // An older world answers 404: the route never ran.
+      if (!canRecover || !owner) throw Object.assign(new Error("Not found."), { status: 404 });
       world.accounts[owner] = password;
       return { token: `tok-${owner}`, expiresAt: "2030-01-01T00:00:00.000Z", username: owner };
     },
@@ -115,6 +116,9 @@ test("a world too old to recover its owner still asks for a sign-in", async () =
   const h = harness({ profile: { username: "kaleb", secret: "old-secret" }, accounts: { kaleb: "temporary" }, canRecover: false });
   assert.deepEqual(await enterLocalWorld(h.deps, false), { kind: "needs-login" });
   assert.deepEqual(h.world.accounts, { kaleb: "temporary" });
+  // The world refused, so the password the shell kept is kept: the sign-in
+  // may have failed for a reason of its own (a lockout, a busy world).
+  assert.deepEqual(h.kept(), { username: "kaleb", secret: "old-secret" });
 });
 
 test("a password the player chose is never replaced: they are asked to type it", async () => {

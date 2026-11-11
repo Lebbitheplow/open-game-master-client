@@ -7,7 +7,16 @@ import type { WorldRequest } from "../shared/world-transfer";
 
 const TIMEOUT_MS = 10_000;
 
-export class ApiError extends Error {}
+// `status` is the HTTP status when the server answered, absent when it
+// could not be reached: a refusal and a lost answer are told apart by it.
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+  }
+}
 
 async function api(origin: string, pathname: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<Response> {
   try {
@@ -22,7 +31,7 @@ async function api(origin: string, pathname: string, init?: RequestInit, timeout
 
 async function errorFrom(res: Response, fallback: string): Promise<ApiError> {
   const body = (await res.json().catch(() => null)) as { error?: string } | null;
-  return new ApiError(body?.error || fallback);
+  return new ApiError(body?.error || fallback, res.status);
 }
 
 export async function probeServer(origin: string): Promise<ServerProbe> {

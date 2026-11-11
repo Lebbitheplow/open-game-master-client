@@ -250,7 +250,11 @@ async function recoverOwner(
   input: { username: string; password: string; setupCode: string },
 ): Promise<TokenGrant> {
   const reply = await http(origin, "/api/auth/recover-owner", { method: "POST", body: input });
-  if (reply.status !== 200) throw new Error(errorText(reply, "Could not get back into your world."));
+  // The status tells the caller the world answered (and set nothing), as
+  // against a lost answer (local-world.ts recoverOwner).
+  if (reply.status !== 200) {
+    throw Object.assign(new Error(errorText(reply, "Could not get back into your world.")), { status: reply.status });
+  }
   const body = reply.data as { token: string; expiresAt: string; user: { username: string } };
   return { token: body.token, expiresAt: body.expiresAt, username: body.user.username };
 }

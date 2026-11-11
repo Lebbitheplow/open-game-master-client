@@ -70,7 +70,8 @@ function harness(overrides: {
       : {
           recoverOwner: async (_origin: string, input: { username: string; password: string; setupCode: string }) => {
             calls.push(`recover:${input.username}:${input.password}:${input.setupCode}`);
-            if (overrides.recover === "refused") throw new Error("Not found.");
+            // An older world answers 404: the route never ran.
+            if (overrides.recover === "refused") throw Object.assign(new Error("Not found."), { status: 404 });
             return { token: "tok-recovered", expiresAt: "2030-01-01T00:00:00.000Z", username: input.username };
           },
         }),
@@ -599,6 +600,9 @@ test("a world that refuses recovery, or a native side with no setup code, still 
     recover: "refused",
   });
   assert.deepEqual(await createLocalWorld(refused.deps).play(""), { ok: false, needsLogin: true, error: "Sign in to your world." });
+  // The world refused, so the password the app kept is kept: the sign-in
+  // may have failed for a reason of its own (a lockout, a busy world).
+  assert.equal(refused.profile()?.secret, "stale");
   const noCode = harness({
     world: { firstRun: false },
     profile: { username: "kaleb", secret: "stale", token: "", tokenExpiresAt: "" },
