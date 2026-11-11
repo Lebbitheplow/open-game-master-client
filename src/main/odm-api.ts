@@ -88,6 +88,34 @@ export async function loginForToken(
   };
 }
 
+// The way back into the world this app hosts once the password the shell
+// made up for its owner stops signing in: the setup code the shell handed
+// the world at start proves the caller is the app, and the world sets the
+// new password the shell made up (src/app/api/auth/recover-owner on the
+// server). Worlds older than the route answer 404, which throws here.
+export async function recoverOwner(
+  origin: string,
+  input: { username: string; password: string; setupCode: string },
+): Promise<TokenGrant> {
+  const res = await api(origin, "/api/auth/recover-owner", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw await errorFrom(res, "Could not get back into your world.");
+  const body = (await res.json()) as {
+    token: string;
+    expiresAt: string;
+    user: { username: string; isAdmin: boolean };
+  };
+  return {
+    token: body.token,
+    expiresAt: body.expiresAt,
+    username: body.user.username,
+    isAdmin: Boolean(body.user.isAdmin),
+  };
+}
+
 export async function registerAccount(
   origin: string,
   input: { username: string; password: string; inviteCode: string; joinCode?: string; setupCode?: string },

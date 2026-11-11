@@ -242,6 +242,19 @@ async function loginForToken(
   return { token: body.token, expiresAt: body.expiresAt, username: body.user.username };
 }
 
+// The way back into the world this device hosts once the password the app
+// made up for its owner stops signing in: the setup code proves the caller
+// is the app (local-world.ts, the server's /api/auth/recover-owner).
+async function recoverOwner(
+  origin: string,
+  input: { username: string; password: string; setupCode: string },
+): Promise<TokenGrant> {
+  const reply = await http(origin, "/api/auth/recover-owner", { method: "POST", body: input });
+  if (reply.status !== 200) throw new Error(errorText(reply, "Could not get back into your world."));
+  const body = reply.data as { token: string; expiresAt: string; user: { username: string } };
+  return { token: body.token, expiresAt: body.expiresAt, username: body.user.username };
+}
+
 async function registerAccount(
   origin: string,
   input: { username: string; password: string; inviteCode: string; joinCode?: string; setupCode?: string },
@@ -750,6 +763,7 @@ const localWorld = createLocalWorld({
     await Preferences.remove({ key: LOCAL_PROFILE_KEY });
   },
   loginForToken,
+  recoverOwner,
   registerAccount,
   tokenIsValid,
   patchAdminSettings,
