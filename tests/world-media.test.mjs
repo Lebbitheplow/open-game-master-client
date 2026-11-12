@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   cleanKokoroUrl,
+  KOKORO_BLACKWELL,
+  KOKORO_CPU,
+  KOKORO_GPU,
+  kokoroCommands,
   narrationInEffect,
   narrationPatch,
   narrationSample,
@@ -204,4 +208,22 @@ test("the library is read with a GET and downloaded with the release pack's POST
   assert.deepEqual(calls.gets, ["/api/admin/ambience"]);
   assert.equal((await soundLibrary(true, world)).status, "installing");
   assert.deepEqual(calls.posts, [{ path: "/api/admin/ambience", body: { action: "install" } }]);
+});
+
+// The gpu image's :latest has no kernels for an RTX 50 series card, so the
+// scanned card picks the image, and without a scan both are named.
+test("Kokoro's start command fits this computer's NVIDIA card", () => {
+  const commands = (hardware) => kokoroCommands(hardware).map(({ command }) => command);
+  const card = (computeCap) => ({ id: "GPU-1", name: "card", vendor: "nvidia", vramGb: 16, integrated: false, ...(computeCap ? { computeCap } : {}) });
+  assert.deepEqual(commands({ gpus: [card(12)], gpuVendor: "nvidia", gpuCompute: 12 }), [KOKORO_CPU, KOKORO_BLACKWELL]);
+  assert.deepEqual(commands({ gpus: [card(8.9)], gpuVendor: "nvidia", gpuCompute: 8.9 }), [KOKORO_CPU, KOKORO_GPU]);
+  // A Blackwell card beside an older one: the cu128 build runs both.
+  assert.deepEqual(commands({ gpus: [card(8.6), card(12)], gpuVendor: "nvidia", gpuCompute: 8.6 }), [KOKORO_CPU, KOKORO_BLACKWELL]);
+  // A driver too old to report compute capability, no scan, or no NVIDIA card.
+  assert.deepEqual(commands({ gpus: [card()], gpuVendor: "nvidia" }), [KOKORO_CPU, KOKORO_GPU, KOKORO_BLACKWELL]);
+  assert.deepEqual(commands(null), [KOKORO_CPU, KOKORO_GPU, KOKORO_BLACKWELL]);
+  assert.deepEqual(commands({ gpus: [], gpuVendor: "amd" }), [KOKORO_CPU, KOKORO_GPU, KOKORO_BLACKWELL]);
+  assert.match(KOKORO_BLACKWELL, /kokoro-fastapi-gpu:latest-cu128$/);
+  assert.match(KOKORO_GPU, /kokoro-fastapi-gpu:latest$/);
+  assert.match(kokoroCommands(null)[2].label, /RTX 50/);
 });

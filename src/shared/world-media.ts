@@ -6,7 +6,7 @@
 // settings, PATCH /api/admin/settings, the guided setup's scan of this
 // computer, the narration test, and the sound pack download.
 import { openAiNarrationPatch, savedAiFrom, type AdminPost } from "./ai-setup";
-import type { NarrationChoice, NarrationStatus, SoundLibraryStatus } from "./types";
+import type { HardwareInfo, NarrationChoice, NarrationStatus, SoundLibraryStatus } from "./types";
 
 // The world's admin routes, as each shell calls them; a refusal throws.
 export interface WorldAdmin {
@@ -97,6 +97,42 @@ export function narrationPatch(choice: Exclude<NarrationChoice, { kind: "openai"
     return { speech: { ttsProvider: "kokoro", kokoroUrl: choice.url.trim().replace(/\/+$/, "").slice(0, 500), ttsModel: "", ttsVoice: "" } };
   }
   return { speech: { ttsProvider: "off" } };
+}
+
+// Kokoro-FastAPI's published images, as the server's guided setup offers
+// them (src/app/setup/MediaSteps.tsx). The gpu image's :latest carries
+// CUDA 12.6 torch, which has no kernels for Blackwell (compute capability
+// 10 and up, the RTX 50 series): Kokoro starts there and then fails on the
+// card. Those cards take the :latest-cu128 build; the older ones keep
+// :latest, since the 12.8 wheels dropped the GTX 900 and 10 series.
+const KOKORO_RUN = "docker run -d --name kokoro --restart unless-stopped";
+export const KOKORO_CPU = `${KOKORO_RUN} -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest`;
+export const KOKORO_GPU = `${KOKORO_RUN} --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest`;
+export const KOKORO_BLACKWELL = `${KOKORO_RUN} --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest-cu128`;
+
+export interface KokoroCommand {
+  label: string;
+  command: string;
+}
+
+// The commands to offer, from the installer's hardware scan when there is
+// one. A scanned NVIDIA card gets only the image built for it; with no scan
+// (or a card whose generation is unknown) both NVIDIA images are offered,
+// each named for the cards it runs on.
+export function kokoroCommands(hardware: Pick<HardwareInfo, "gpus" | "gpuVendor" | "gpuCompute"> | null): KokoroCommand[] {
+  const cpu = { label: "Without a graphics card", command: KOKORO_CPU };
+  const nvidia = (hardware?.gpus ?? []).filter((gpu) => gpu.vendor === "nvidia");
+  const caps = nvidia.map((gpu) => gpu.computeCap);
+  if (!nvidia.length && hardware?.gpuVendor === "nvidia") caps.push(hardware.gpuCompute);
+  if (caps.length && caps.every((cap) => typeof cap === "number")) {
+    const blackwell = caps.some((cap) => (cap ?? 0) >= 10);
+    return [cpu, { label: "With this computer's NVIDIA graphics card", command: blackwell ? KOKORO_BLACKWELL : KOKORO_GPU }];
+  }
+  return [
+    cpu,
+    { label: "With an NVIDIA graphics card up to the RTX 40 series", command: KOKORO_GPU },
+    { label: "With an NVIDIA RTX 50 series graphics card", command: KOKORO_BLACKWELL },
+  ];
 }
 
 // A typed Kokoro address, as the world's server will be asked for it.

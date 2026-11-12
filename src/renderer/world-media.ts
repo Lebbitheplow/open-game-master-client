@@ -14,19 +14,27 @@ import { isAndroid, state } from "./state.js";
 import {
   SOUND_PACK_MB,
   cleanKokoroUrl,
+  kokoroCommands,
   narrationInEffect,
   narrationSummary,
   soundLibraryOffer,
   soundLibrarySummary,
 } from "../shared/world-media.js";
-import type { NarrationChoice, NarrationStatus, SoundLibraryStatus } from "../shared/types";
+import type { KokoroCommand } from "../shared/world-media.js";
+import type { HardwareInfo, NarrationChoice, NarrationStatus, SoundLibraryStatus } from "../shared/types";
 
-// Kokoro-FastAPI's published images, as the server's guided setup offers
-// them (src/app/setup/MediaSteps.tsx).
-const KOKORO_COMMANDS = [
-  { label: "Without a graphics card", command: "docker run -d --name kokoro --restart unless-stopped -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-cpu:latest" },
-  { label: "With an NVIDIA graphics card", command: "docker run -d --name kokoro --restart unless-stopped --gpus all -p 8880:8880 ghcr.io/remsky/kokoro-fastapi-gpu:latest" },
-];
+// The installer's hardware scan, asked once per run of the app, which picks
+// the Kokoro image for this computer's card. null when there is no scan
+// (the phone) or it failed.
+let scannedHardware: Promise<HardwareInfo | null> | null = null;
+
+function hardwareScan(): Promise<HardwareInfo | null> {
+  scannedHardware ??= window.odm
+    .localAiScan()
+    .then((result) => (result.ok ? result.hardware : null))
+    .catch(() => null);
+  return scannedHardware;
+}
 
 type Note =
   | { kind: "none" }
@@ -227,20 +235,31 @@ function kokoroHelp(): HTMLDetailsElement {
   const help = el("details", "tuning");
   help.append(el("summary", "", "How do I start Kokoro on this computer?"));
   help.append(el("p", "hint", "Kokoro-FastAPI runs in Docker. Start it once with one of these and it comes back with the computer; then press Check again."));
-  for (const { label, command } of KOKORO_COMMANDS) {
-    const line = el("div", "settings-row");
-    const text = el("span", "grow");
-    text.append(el("span", "settings-label", label), el("code", "media-command", command));
-    const copy = button("secondary", "Copy", (btn) => {
-      void copyText(command).then((ok) => {
-        btn.lastChild!.textContent = ok ? "Copied" : "Copy failed";
-      });
-    }, "copy");
-    line.append(text, copy);
-    help.append(line);
+  const lines = el("div");
+  const fill = (commands: KokoroCommand[]) => {
+    lines.replaceChildren(...commands.map(commandLine));
+  };
+  fill(kokoroCommands(null));
+  if (!isAndroid) {
+    void hardwareScan().then((hardware) => {
+      if (hardware && lines.isConnected) fill(kokoroCommands(hardware));
+    });
   }
-  help.append(button("secondary", "Check again", () => askNarration(), "refresh"));
+  help.append(lines, button("secondary", "Check again", () => askNarration(), "refresh"));
   return help;
+}
+
+function commandLine({ label, command }: KokoroCommand): HTMLElement {
+  const line = el("div", "settings-row");
+  const text = el("span", "grow");
+  text.append(el("span", "settings-label", label), el("code", "media-command", command));
+  const copy = button("secondary", "Copy", (btn) => {
+    void copyText(command).then((ok) => {
+      btn.lastChild!.textContent = ok ? "Copied" : "Copy failed";
+    });
+  }, "copy");
+  line.append(text, copy);
+  return line;
 }
 
 function kokoroElsewhere(): HTMLDetailsElement {
