@@ -277,6 +277,9 @@ export interface LocalAiStatus {
   comfy: {
     installed: boolean;
     running: boolean;
+    // A ComfyUI the app did not start answers at its port, so the world
+    // paints with that one's files, not the app's checkpoint.
+    external: boolean;
     checkpoint: string;
     error: string;
   };

@@ -58,6 +58,15 @@ export function describeVerify(report: VerifyReport | null): string {
   return `${parts.join(", ")} of ${report.listed}`;
 }
 
+// The image engine's state, and its checkpoint only when the app's own
+// ComfyUI is the one answering: one started outside the app has its own
+// files, and a report naming the app's checkpoint for it (issue 943's)
+// sent the reader after a model that server never had.
+function comfyState(comfy: NonNullable<DiagnosticFacts["localAi"]>["comfy"]): string {
+  if (comfy.running && comfy.external) return "ComfyUI answering, started outside the app";
+  return `ComfyUI ${comfy.running ? "running" : "stopped"}${comfy.checkpoint ? `, ${comfy.checkpoint}` : ""}`;
+}
+
 // One line each for the story engine and the image engine.
 export function describeLocalAi(ai: DiagnosticFacts["localAi"]): string[] {
   if (!ai) return ["Local AI: not available on this device"];
@@ -68,7 +77,7 @@ export function describeLocalAi(ai: DiagnosticFacts["localAi"]): string[] {
       }${ai.error ? ` (${ai.error})` : ""}`;
   const images = !ai.comfy.installed
     ? "not installed"
-    : `ComfyUI ${ai.comfy.running ? "running" : "stopped"}${ai.comfy.checkpoint ? `, ${ai.comfy.checkpoint}` : ""}${ai.comfy.error ? ` (${ai.comfy.error})` : ""}`;
+    : `${comfyState(ai.comfy)}${ai.comfy.error ? ` (${ai.comfy.error})` : ""}`;
   return [`Local AI: ${story}`, `Image AI: ${images}`];
 }
 
@@ -127,7 +136,7 @@ export function reportLocalAi(ai: DiagnosticFacts["localAi"], home = ""): Report
       }${error(ai.error)}`;
   const localImages = !ai.comfy.installed
     ? "not installed"
-    : `ComfyUI ${ai.comfy.running ? "running" : "stopped"}${ai.comfy.checkpoint ? `, ${ai.comfy.checkpoint}` : ""}${error(ai.comfy.error)}`;
+    : `${comfyState(ai.comfy)}${error(ai.comfy.error)}`;
   return { localStory, localImages };
 }
 
