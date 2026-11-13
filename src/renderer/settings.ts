@@ -181,7 +181,7 @@ function deviceSection(): HTMLElement | null {
   );
   // Opening the page wakes the world when it sleeps.
   const account = button("secondary", "Open", () => void openLocal("/settings"), "user");
-  body.append(row("Your account in this world: name, avatar, password", account));
+  body.append(row("Your account in this world: name and avatar", account));
   const share = el("div", "settings-share");
   share.append(el("span", "settings-label", isAndroid ? "Share online" : "Sharing"));
   share.append(
@@ -381,10 +381,10 @@ function worldsSection(): HTMLElement | null {
   const { card, body } = section(
     "link",
     "Visiting hosts",
-    "Hosts running server 0.16.1 or newer are drawn by the app itself: its own screens, fed by the host's data. This setting covers older hosts.",
+    "Hosts running server 0.31.0 or newer are drawn by the app itself: its own screens, fed by the host's data. Older hosts open their own pages.",
   );
   const line = row(
-    "Load older worlds through the app: a host on server 0.16.0 gets this app's bundled screens, with only game data travelling to it. Hosts older than that open their own pages regardless.",
+    "When the app's own screens cannot open, load a host on this app's server line or newer through its bundled server, with only game data travelling to it. Off, such a host opens its own pages.",
     switchButton(portalOn ?? true, (next) => {
       portalOn = next;
       void window.odm.setPortalMode(next);

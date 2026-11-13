@@ -197,8 +197,9 @@ walks each door:
   16 GB card, pick gpt-oss-20b** ("Story model for 16 GB"): it fits on the card
   whole and keeps turns quick. With 32 GB or more of system memory the list may also
   offer the 35B at Q4 on that card, partly in system memory, which plays a little
-  more reliably and answers slower. It downloads a pinned llama.cpp build (Vulkan on
-  Windows and Linux x64, Metal on Apple Silicon), writes the preset the AI Dungeon
+  more reliably and answers slower. It downloads a pinned llama.cpp build for the graphics card (CUDA on a
+  recent NVIDIA driver, Vulkan on AMD, Intel or an older NVIDIA driver, both on
+  Windows and Linux x64; Metal on Apple Silicon), writes the preset the AI Game
   Master was tuned on, and starts and stops the model with your world.
 - **An agent you already have** (desktop only, not the Flatpak build). Codex, Grok
   Build, Claude Code or opencode, installed and signed in on this computer, narrates
