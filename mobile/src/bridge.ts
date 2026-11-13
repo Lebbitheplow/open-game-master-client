@@ -1937,7 +1937,7 @@ const bridge: OdmBridge = {
     busy: "" as const,
     progress: null,
     error: "",
-    comfy: { installed: false, running: false, checkpoint: "", error: "" },
+    comfy: { installed: false, running: false, external: false, checkpoint: "", error: "" },
   }),
   localAiStart: async () => fail(new Error("Local AI is desktop-only.")),
   async appInfo() {

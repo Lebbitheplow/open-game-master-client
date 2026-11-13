@@ -39,17 +39,30 @@ export async function wireTextAi(
   }
 }
 
+// The world's image settings after an install. When a ComfyUI the app did
+// not start already answers at the address, the world paints with that one,
+// which never has the app's checkpoint: naming it there sent every map and
+// scene picture back as ComfyUI's "not in []" (issue 943), and switched off
+// a catalog model the admin had chosen. Only the address is set then, and
+// the model is left to pick.
+export function imageAiPatch(comfyUrl: string, checkpoint: string, external: boolean) {
+  return {
+    images: { defaultBackend: "comfyui", comfyUrl, ...(external || !checkpoint ? {} : { comfyCheckpoint: checkpoint }) },
+  };
+}
+
 export async function wireImageAi(
   origin: string,
   token: string,
   comfyUrl: string,
   checkpoint: string,
+  external = false,
 ): Promise<string> {
   try {
-    await patchAdminSettings(origin, token, {
-      images: { defaultBackend: "comfyui", comfyUrl, comfyCheckpoint: checkpoint },
-    });
-    return "";
+    await patchAdminSettings(origin, token, imageAiPatch(comfyUrl, checkpoint, external));
+    return external
+      ? "Another ComfyUI already answers on this computer, so the world paints with that one. Pick one of its models in the game's admin settings, under Images."
+      : "";
   } catch (err) {
     return (
       `Image generation installed and works, but updating the world's image settings failed: ${reason(err)} ` +

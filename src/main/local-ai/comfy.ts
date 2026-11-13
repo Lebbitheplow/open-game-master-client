@@ -165,6 +165,7 @@ export class ComfyManager {
     return {
       installed,
       running: this.externalServer || (this.ready && this.child !== null && this.child.exitCode === null),
+      external: this.externalServer,
       checkpoint: installed ? CHECKPOINT.file : "",
       error: this.error,
     };
@@ -274,6 +275,13 @@ export class ComfyManager {
       this.error = err instanceof Error ? err.message : String(err);
       throw err;
     }
+  }
+
+  // Whether a ComfyUI the app did not start answers at its port now, as
+  // start() would find it.
+  async answeredByAnother(): Promise<boolean> {
+    if (this.child && this.child.exitCode === null) return false;
+    return this.portInUse();
   }
 
   private async portInUse(): Promise<boolean> {

@@ -19,7 +19,7 @@ const facts = {
     external: false,
     endpoint: "http://127.0.0.1:8001/v1",
     error: "The local AI server stopped 3 times in ten minutes (last exit code 139); see llama-server.log. Once the cause is fixed, start it again from Story AI, or install the story model again there.",
-    comfy: { installed: true, running: true, checkpoint: "z-image-turbo.safetensors", error: "" },
+    comfy: { installed: true, running: true, external: false, checkpoint: "z-image-turbo.safetensors", error: "" },
   },
   verify: { unpacked: true, listed: 3786, missing: ["server.js"], changed: [".next/server/app/page.js"], hashed: false },
   paths: { userData: "~/AppData/Roaming/open-dungeon-master-client", log: "~/AppData/Roaming/open-dungeon-master-client/local-server.log" },
@@ -76,10 +76,10 @@ test("the local AI lines tell running from adopted from absent, on a phone too",
     "Local AI: Qwen story model (Q4) (qwen-q4), answering at http://127.0.0.1:8001/v1, started outside the app",
   );
   assert.deepEqual(
-    describeLocalAi({ ...ai, installedTierId: "", installedLabel: "", comfy: { installed: false, running: false, checkpoint: "", error: "" } }),
+    describeLocalAi({ ...ai, installedTierId: "", installedLabel: "", comfy: { installed: false, running: false, external: false, checkpoint: "", error: "" } }),
     ["Local AI: not installed", "Image AI: not installed"],
   );
-  assert.equal(describeLocalAi({ ...ai, comfy: { installed: true, running: false, checkpoint: "", error: "The image server stopped (see comfy.log)." } })[1], "Image AI: ComfyUI stopped (The image server stopped (see comfy.log).)");
+  assert.equal(describeLocalAi({ ...ai, comfy: { installed: true, running: false, external: false, checkpoint: "", error: "The image server stopped (see comfy.log)." } })[1], "Image AI: ComfyUI stopped (The image server stopped (see comfy.log).)");
   assert.deepEqual(describeLocalAi(null), ["Local AI: not available on this device"]);
 });
 
@@ -103,6 +103,11 @@ test("a report file names the local AI by model and state, never where it answer
   });
   assert.ok(!JSON.stringify(local).includes("127.0.0.1"), "the engine's address reached the report");
   assert.equal(reportLocalAi(null), null);
+  // Issue 943's report named the app's SDXL file for a ComfyUI started
+  // outside the app, whose checkpoint list was empty.
+  const outside = { ...facts.localAi, comfy: { ...facts.localAi.comfy, external: true } };
+  assert.equal(reportLocalAi(outside).localImages, "ComfyUI answering, started outside the app");
+  assert.equal(describeLocalAi(outside)[1], "Image AI: ComfyUI answering, started outside the app");
   const bare = reportLocalAi({ ...facts.localAi, installedTierId: "", comfy: { ...facts.localAi.comfy, installed: false } });
   assert.deepEqual(bare, { localStory: "not installed", localImages: "not installed" });
   // The page's facts carry the lines through, and an app that sends none

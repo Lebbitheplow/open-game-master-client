@@ -1634,6 +1634,7 @@ export function registerIpc(ctx: ShellContext): ShellIpc {
           token,
           localAi.comfy.origin(),
           localAi.comfy.checkpointFile(),
+          await localAi.comfy.answeredByAnother(),
         );
       }
       void localAi.startComfy().catch(() => win.sendEvent({ kind: "local-ai-progress", status: localAi.status() }));
