@@ -59,15 +59,34 @@ test("the ladder is ordered largest first and ends with gpt-oss-20b, the 16 GB m
   }
   assert.equal(CATALOG[CATALOG.length - 1].id, "gpt-oss-20b");
   assert.equal(CATALOG[CATALOG.length - 1].needsGb, 16);
-  assert.deepEqual(RETIRED.map((entry) => entry.id), ["qwen-q3", "qwen-q2", "gemma-12b"]);
+  assert.deepEqual(RETIRED.map((entry) => entry.id), ["qwen-q2", "gemma-12b"]);
   assert.ok(!CATALOG.some((entry) => RETIRED.includes(entry)));
 });
 
-test("a 16GB VRAM gaming PC gets the standard story quant via MoE offload", () => {
+// A 16 GB card with 64 GB beside it was recommended the 35B at Q8, mostly in
+// system memory, and its fights crawled (server issue 954).
+test("a 16GB VRAM gaming PC gets gpt-oss-20b on the card; the 35B at Q4 can be picked and says it runs from system memory", () => {
   const tiers = sizeTiers(gamingPc, "");
-  const recommended = tiers.find((tier) => tier.recommended);
-  assert.equal(recommended?.id, "qwen-q4");
+  assert.equal(tiers.find((tier) => tier.recommended)?.id, "gpt-oss-20b");
+  assert.equal(tiers.find((tier) => tier.id === "gpt-oss-20b")?.systemMemory, false);
+  const q4 = tiers.find((tier) => tier.id === "qwen-q4");
+  assert.equal(q4?.fits, true, "a bigger tier can still be picked");
+  assert.equal(q4?.systemMemory, true, "and says it runs partly from system memory");
   assert.equal(tiers.find((tier) => tier.id === "qwen-q8")?.fits, false);
+  const issueMachine = sizeTiers({ ...gamingPc, ramGb: 64 }, "");
+  assert.equal(issueMachine.find((tier) => tier.recommended)?.id, "gpt-oss-20b");
+  assert.equal(issueMachine.find((tier) => tier.id === "qwen-q8")?.systemMemory, true);
+});
+
+test("each card is recommended the best tier it holds whole", () => {
+  const pick = (vramGb) => sizeTiers({ ...gamingPc, vramGb, ramGb: 64 }, "").find((tier) => tier.recommended)?.id;
+  assert.equal(pick(16), "gpt-oss-20b");
+  assert.equal(pick(20), "gpt-oss-20b");
+  assert.equal(pick(24), "qwen-q3");
+  assert.equal(pick(32), "qwen-q4");
+  assert.equal(pick(40), "qwen-q6");
+  assert.equal(pick(48), "qwen-q8");
+  assert.ok(sizeTiers(mac, "").every((tier) => !tier.systemMemory), "unified memory has no card to overflow");
 });
 
 test("a machine without 16 GB of graphics memory is offered no storyteller", () => {
@@ -109,7 +128,21 @@ test("an install from before the minimum still starts and shows, and is never of
   assert.equal(gemma?.recommended, false);
   const q2 = sizeTiers(gamingPc, "qwen-q2");
   assert.equal(q2.find((tier) => tier.id === "qwen-q2")?.installed, true);
-  assert.equal(q2.find((tier) => tier.recommended)?.id, "qwen-q4");
+  assert.equal(q2.find((tier) => tier.recommended)?.id, "gpt-oss-20b");
+});
+
+// Both load with every layer on the GPU: a helper the card cannot hold spills
+// the story into system memory with it.
+test("the helper model is installed only where it fits on the card beside the storyteller", () => {
+  const card = (vramGb) => ({ ...gamingPc, vramGb, ramGb: 64 });
+  assert.equal(utilityFits(catalogEntry("gpt-oss-20b"), card(16)), false, "16 GB holds the storyteller alone");
+  assert.equal(utilityFits(catalogEntry("gpt-oss-20b"), card(24)), true);
+  assert.equal(utilityFits(catalogEntry("qwen-q4"), card(32)), false);
+  assert.equal(utilityFits(catalogEntry("qwen-q6"), card(48)), true);
+  assert.equal(utilityFits(catalogEntry("qwen-q8"), mac), true, "64 GB of unified memory holds both");
+  // No real card: both run from RAM, sized by the RAM.
+  assert.equal(utilityFits(catalogEntry("gemma-12b"), smallLaptop), false);
+  assert.equal(utilityFits(catalogEntry("gemma-12b"), { ...smallLaptop, ramGb: 32 }), true);
 });
 
 test("unified memory counts the whole pool", () => {
@@ -259,9 +292,10 @@ test("the corrected scan moves the reporter's machine up the ladder and keeps a 
   const machine = { platform: "win32", arch: "x64", ramGb: 32, gpuName: RX_7900_XT, gpuVendor: "amd", unifiedMemory: false };
   const before = sizeTiers({ ...machine, vramGb: 4 }, "").find((tier) => tier.recommended);
   const after = sizeTiers({ ...machine, vramGb: 20 }, "").find((tier) => tier.recommended);
-  // Misread as 4 GB the card sat below the 16 GB minimum and was offered nothing.
+  // Misread as 4 GB the card sat below the 16 GB minimum and was offered nothing;
+  // read as 20 GB it holds gpt-oss-20b whole (the 35B's Q3 needs about 22).
   assert.equal(before, undefined);
-  assert.equal(after.id, "qwen-q4");
+  assert.equal(after.id, "gpt-oss-20b");
   const q2 = catalogEntry("qwen-q2");
   assert.match(presetFor(q2, "/m/q2.gguf", { ...machine, vramGb: 4 }), /cpu-moe/);
   assert.doesNotMatch(presetFor(q2, "/m/q2.gguf", { ...machine, vramGb: 20 }), /cpu-moe/);
