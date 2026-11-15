@@ -403,7 +403,9 @@ The matching addon and board view must also be installed and offered by the
 local world. The native program receives newline-delimited JSON on stdin:
 { "native": 1, "type": "init", "parentWindow": "<decimal HWND>",
 "settings": {} }, then message packets containing the same host-to-view
-board messages as the [server board bridge](https://github.com/Lebbitheplow/open-game-master/blob/main/docs/addons/extension-points.md).
+board messages as the [server board bridge](https://github.com/Lebbitheplow/open-game-master/blob/main/docs/addons/extension-points.md),
+passed through unchanged (an addon split into parts, one per campaign setting,
+finds the parts set up on the server in `snapshot.parts`).
 It also receives layout packets with CSS-pixel bounds, occlusions,
 visible and scale, and a close packet on shutdown. It must exit when its
 stdin closes: if the app itself is killed or crashes it sends no close
@@ -522,6 +524,15 @@ app is built on [Electron](https://www.electronjs.org/), the Android app on
 [llama.cpp](https://github.com/ggml-org/llama.cpp),
 [ComfyUI](https://github.com/comfyanonymous/ComfyUI), and models downloaded from
 their publishers under their own licenses (Qwen, gpt-oss, Stable Diffusion XL).
+
+**Addon creators.** Addons are their creators' own projects, kept in their own
+GitHub repositories. The server's README lists every addon on the downloader list
+with its creator and repositories, in its
+[addon creators](https://github.com/Lebbitheplow/open-game-master#addon-creators)
+table. The apps credit them the same way the website does, since they draw the
+server's own screens: by name, linked to their repository, wherever an addon's
+importer, map generator or board view is offered, on Admin > Addons, and on the
+licenses page.
 
 <sub>Dungeons &amp; Dragons and D&amp;D are trademarks of Wizards of the Coast LLC. This
 project is not affiliated with, endorsed, or sponsored by Wizards of the Coast.</sub>
