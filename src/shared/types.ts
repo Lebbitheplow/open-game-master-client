@@ -251,6 +251,9 @@ export interface LocalAiTier {
   sizeGb: number;
   needsGb: number;
   fits: boolean;
+  // Fits only with part of the model in system memory: slower turns, never
+  // the recommendation.
+  systemMemory: boolean;
   recommended: boolean;
   installed: boolean;
 }

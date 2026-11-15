@@ -310,8 +310,14 @@ function renderLocalAiTiers(hardware: HardwareInfo, tiers: LocalAiTier[]): void 
   const choices = el("div", "choices");
   for (const tier of tiers) {
     const tag = tier.installed ? "installed" : tier.recommended ? "recommended" : "";
+    // A tier that fits only with part of it in system memory says what that
+    // costs, so nobody picks the slow one thinking it is the better one.
     const desc = `${tier.detail} ${tier.sizeGb} GB download${
-      tier.fits || tier.installed ? "" : `; needs about ${tier.needsGb} GB of memory`
+      !tier.fits && !tier.installed
+        ? `; needs about ${tier.needsGb} GB of memory`
+        : tier.systemMemory
+          ? `. Too big for this card: part of it runs from system memory, so every turn is slower`
+          : ""
     }.`;
     const btn = choice(
       "sparkles",

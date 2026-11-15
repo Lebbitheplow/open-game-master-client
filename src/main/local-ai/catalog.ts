@@ -7,9 +7,12 @@ import type { HardwareInfo, LocalAiTier } from "../../shared/types";
 //
 // The story model is Qwen3.6-35B-A3B, the same model the ODM server's
 // defaults were tuned against. A3B means ~3B active parameters per token
-// (mixture of experts), which is what makes big-model quality viable on
-// modest hardware: experts that do not fit in VRAM can sit in system RAM
-// (cpu-moe) at a tolerable speed cost. All files come from ungated repos
+// (mixture of experts). Its experts can sit in system RAM (cpu-moe) when the
+// file does not fit the card, but every turn then reads a 35 to 40K token
+// prompt through system memory: a 16 GB card was recommended the 35B at Q8
+// that way and fights crawled (server issue 954). So the recommendation is
+// the best tier that fits the card whole (sizeTiers); a bigger one can still
+// be picked, and says it will be slower. All files come from ungated repos
 // (Unsloth's Dynamic quants, ggml-org's gpt-oss), so downloads need no
 // Hugging Face account.
 
@@ -74,6 +77,19 @@ export const CATALOG: CatalogEntry[] = [
     moe: true,
     family: "qwen",
   },
+  // A 24 GB card holds the 35B whole only at Q3.
+  {
+    id: "qwen-q3",
+    label: "Story model for 24 GB",
+    detail: "Qwen3.6-35B-A3B at Q3: compressed to fit a 24 GB card whole, still the real model.",
+    alias: "qwen3.6-35b",
+    url: `${QWEN_BASE}/Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf`,
+    file: "Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf",
+    sizeGb: 16.9,
+    needsGb: 22,
+    moe: true,
+    family: "qwen",
+  },
   {
     id: "gpt-oss-20b",
     label: "Story model for 16 GB",
@@ -90,22 +106,10 @@ export const CATALOG: CatalogEntry[] = [
 
 // Tiers offered before the 16 GB minimum. An install of one still starts and
 // shows as installed; none is offered again. Where they fit, gpt-oss-20b
-// plays the full rules as well as the 35B at Q2 and Q3 did, faster and in
-// less memory (the server's docs/text-backends.md has the runs), and Gemma
-// 4 12B plays only on the short rules.
+// plays the full rules as well as the 35B at Q2 did, faster and in less
+// memory (the server's docs/text-backends.md has the runs), and Gemma 4 12B
+// plays only on the short rules.
 export const RETIRED: CatalogEntry[] = [
-  {
-    id: "qwen-q3",
-    label: "Story model, compact",
-    detail: "Qwen3.6-35B-A3B at Q3: noticeably compressed, still the real model.",
-    alias: "qwen3.6-35b",
-    url: `${QWEN_BASE}/Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf`,
-    file: "Qwen3.6-35B-A3B-UD-Q3_K_XL.gguf",
-    sizeGb: 16.9,
-    needsGb: 22,
-    moe: true,
-    family: "qwen",
-  },
   {
     id: "qwen-q2",
     label: "Story model, minimum",
@@ -161,14 +165,24 @@ export function meetsMinimum(hardware: HardwareInfo): boolean {
   return graphicsMemoryGb(hardware) >= LOCAL_AI_MINIMUM_GB;
 }
 
-// Whether the machine can hold the utility model next to a story tier.
+// Whether the machine can hold the utility model next to a story tier: on
+// the card beside it, since both load with every layer on the GPU, and a
+// card that overflows spills into system memory and slows the story too.
+// A machine with no real card runs both from RAM (memoryBudgetGb).
 export function utilityFits(entry: CatalogEntry, hardware: HardwareInfo): boolean {
-  return entry.needsGb + UTILITY_ENTRY.needsGb <= memoryBudgetGb(hardware);
+  const room = !hardware.unifiedMemory && hardware.vramGb >= 4 ? hardware.vramGb : memoryBudgetGb(hardware);
+  return entry.needsGb + UTILITY_ENTRY.needsGb <= room;
 }
 
-// How much model this machine can carry. MoE with cpu-moe means system RAM
-// genuinely counts: attention lives on the GPU and the expert weights
-// stream from RAM at ~3B active parameters per token.
+// Whether a tier fits the card only with part of it in system memory.
+export function needsSystemMemory(entry: CatalogEntry, hardware: HardwareInfo): boolean {
+  return entry.needsGb > graphicsMemoryGb(hardware);
+}
+
+// How much model this machine can carry at all. MoE with cpu-moe means
+// system RAM counts: attention lives on the GPU and the expert weights
+// stream from RAM at ~3B active parameters per token, slowly (catalog head).
+// This sizes what can be picked, never what is recommended.
 export function memoryBudgetGb(hardware: HardwareInfo): number {
   if (hardware.unifiedMemory) {
     return hardware.ramGb * 0.8;
@@ -196,10 +210,12 @@ export function sizeTiers(
     sizeGb: entry.sizeGb,
     needsGb: entry.needsGb,
     fits: enough && entry.needsGb <= budget,
+    systemMemory: needsSystemMemory(entry, hardware),
     recommended: false,
     installed: entry.id === installedTierId,
   }));
-  const best = tiers.find((tier) => tier.fits && CATALOG.some((entry) => entry.id === tier.id));
+  // The best tier that fits the card whole: the ladder runs largest first.
+  const best = tiers.find((tier) => tier.fits && !tier.systemMemory && CATALOG.some((entry) => entry.id === tier.id));
   if (best) {
     best.recommended = true;
   }

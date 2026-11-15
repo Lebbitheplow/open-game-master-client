@@ -189,15 +189,15 @@ walks each door:
   billed to your key.
 - **A local model** (desktop only, and only with at least 16 GB of graphics
   memory: a 16 GB card, or 24 GB of memory on a Mac). The app scans your GPU and
-  memory, offers the Qwen3.6-35B-A3B tiers that fit (Q8 down to Q4, 22 to 38 GB
-  downloads) or gpt-oss-20b (12 GB) for a 16 GB card, and adds a small
-  Qwen3.5-4B utility model for summaries when there is room. Below 16 GB it
-  offers none, since no model that small plays the full rules well; use your
-  OpenAI key, an agent, or a human Game Master there. **On a gaming PC with a
-  16 GB card, pick gpt-oss-20b** ("Story model for 16 GB"): it fits on the card
-  whole and keeps turns quick. With 32 GB or more of system memory the list may also
-  offer the 35B at Q4 on that card, partly in system memory, which plays a little
-  more reliably and answers slower. It downloads a pinned llama.cpp build for the graphics card (CUDA on a
+  recommends the best storyteller that fits the card whole: gpt-oss-20b (12 GB
+  download) on a 16 GB card, Qwen3.6-35B-A3B at Q3 (17 GB) on a 24 GB card, at Q4
+  (22 GB) from 32 GB and at Q8 (38 GB) from 48 GB, and on a Mac or another machine
+  whose graphics share one memory, the best that fits the graphics' share. It adds
+  a small Qwen3.5-4B utility model for summaries when that fits on the card too.
+  Below 16 GB it offers none, since no model that small plays the full rules well;
+  use your OpenAI key, an agent, or a human Game Master there. A bigger tier than
+  the card holds can still be picked: it says so, and runs partly from system
+  memory, which makes every turn slower. It downloads a pinned llama.cpp build for the graphics card (CUDA on a
   recent NVIDIA driver, Vulkan on AMD, Intel or an older NVIDIA driver, both on
   Windows and Linux x64; Metal on Apple Silicon), writes the preset the AI Game
   Master was tuned on, and starts and stops the model with your world.
