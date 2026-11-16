@@ -80,7 +80,7 @@ function isOpenAi(baseUrl: unknown): boolean {
 // key itself never leaves the server, only whether one is set). A key for
 // some other backend does not count: it could not pay for OpenAI.
 
-const AGENT_NAMES: Record<string, string> = { claude: "Claude Code", codex: "Codex", opencode: "opencode", grok: "Grok Build" };
+const AGENT_NAMES: Record<string, string> = { claude: "Claude Code", codex: "Codex", opencode: "opencode", grok: "Grok Build", pi: "Pi" };
 
 function hostOf(url: unknown): string {
   try {
@@ -326,7 +326,7 @@ export async function saveOpenAiDoor(
 // offered after a test picture from the admin page, never from here.
 export function harnessPatch(setup: AiSetup): { patch: object } | { error: string } {
   const harness = setup.harness;
-  if (!harness || !["claude", "codex", "opencode", "grok"].includes(harness.id)) {
+  if (!harness || !["claude", "codex", "opencode", "grok", "pi"].includes(harness.id)) {
     return { error: "Choose a program first." };
   }
   const speed = setup.fast === true ? "fast" : "";

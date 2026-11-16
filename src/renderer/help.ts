@@ -87,7 +87,7 @@ export function renderHelp(): void {
     section(
       "sparkles",
       "Story AI",
-      `Story AI is what the world on this ${device} plays with: it opens on what is set now (who tells the story, what paints, what reads it aloud), then offers the choices. No AI at all, your own OpenAI API key (which can paint and read aloud too), or${isAndroid ? "" : " an agent you already pay for (Claude Code, Codex, opencode or Grok Build; Codex and Grok Build can paint as well, after one test map), or"} a model on this ${device}.${localAi}`,
+      `Story AI is what the world on this ${device} plays with: it opens on what is set now (who tells the story, what paints, what reads it aloud), then offers the choices. No AI at all, your own OpenAI API key (which can paint and read aloud too), or${isAndroid ? "" : " an agent you already pay for (Claude Code, Codex, opencode, Grok Build or Pi; Codex and Grok Build can paint as well, after one test map), or"} a model on this ${device}.${localAi}`,
       `Story AI sets up the services. Who runs a particular table (the AI, you, or a friend) is chosen when that campaign is made, and a table can always have a person in the Game Master's seat. To play with an AI Game Master on someone else's server, connect to a server that has AI enabled; its admin sets that up.`,
     ),
     section(

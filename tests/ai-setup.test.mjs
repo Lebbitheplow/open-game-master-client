@@ -92,6 +92,11 @@ test("an agent the device already has narrates every campaign, and no key is eve
     text: { provider: "harness" },
   });
   assert.ok(!JSON.stringify(built.patch).includes("ApiKey"), "the agent's own sign-in is used, nothing else");
+  // Pi, the fifth program the server drives (server PR 983), is saved like the others.
+  assert.equal(
+    harnessPatch({ choice: "harness", apiKey: "", model: "", utilityModel: "", harness: { id: "pi", model: "anthropic/claude-opus-5", utilityModel: "" } }).patch.harness.id,
+    "pi",
+  );
   assert.deepEqual(harnessPatch({ choice: "harness", apiKey: "", model: "", utilityModel: "" }), { error: "Choose a program first." });
   assert.deepEqual(
     harnessPatch({ choice: "harness", apiKey: "", model: "", utilityModel: "", harness: { id: "bash", model: "", utilityModel: "" } }),
