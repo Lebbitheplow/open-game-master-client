@@ -139,24 +139,48 @@ export function splitDeclarations(body) {
 // root for an attribute it never carries, and a bare `[data-effects="low"] .x`
 // nested under the root asked a descendant for it: between them the whole day
 // theme and every low effects rule were dead inside the apps.
-const DOCUMENT_ATTRIBUTE = /^(?:html|:root)?((?:\[data-(?:theme|effects)[^\]]*\])+)(?=$|[\s>+~:.#[])/;
+// The visual themes (server 0.37.0) add data-appearance, data-theme-base and
+// data-theme-ornaments on <html> (the last two are read by the data-theme
+// prefix below), and test them inside :not() and :where() too.
+const ATTRIBUTE = String.raw`\[data-(?:theme|effects|appearance)[^\]]*\]`;
+const DOCUMENT_ATTRIBUTE = new RegExp(String.raw`^(html|:root)?((?:${ATTRIBUTE}|:not\(${ATTRIBUTE}\))+)(?=$|[\s>+~:.#[])`);
+// ":where([data-appearance])": the themes' material defaults, kept at zero
+// specificity so every theme's own values win over them.
+const WHERE_DOCUMENT = new RegExp(String.raw`^:where\(((?:${ATTRIBUTE})+)\)(?=$|[\s>+~:.#[])`);
+// The appearance picker's thumbnails carry data-appearance (and their own
+// data-theme) on a <span>, so a bare "[data-appearance=x]" rule paints a
+// thumbnail as well as the page: it keeps a descendant form beside the
+// <html> one.
+const ON_ELEMENTS_TOO = /\[data-appearance/;
+
+function scopeInner(selector) {
+  return selector.replace(/:root\b/g, "&").replace(/(^|[\s>+~])(html|body)(?=$|[\s>+~:.#[])/g, "$1&");
+}
 
 function scopeSelector(part) {
-  let selector = part.trim();
+  const selector = part.trim();
+  const where = WHERE_DOCUMENT.exec(selector);
+  if (where) {
+    const rest = selector.slice(where[0].length);
+    const own = `:where(html${where[1]}) &${rest}`;
+    return ON_ELEMENTS_TOO.test(where[1]) ? `${own},& :where(${where[1]})${rest}` : own;
+  }
   const documentLevel = DOCUMENT_ATTRIBUTE.exec(selector);
-  if (documentLevel) {
+  // A bare ":not([data-theme=light]) .x" matches far more than <html>; only
+  // a leading attribute, or :not() after html or :root, is the document's.
+  if (documentLevel && (documentLevel[1] || documentLevel[2].startsWith("["))) {
     // "html[data-theme=light] .x" and "[data-theme=light] .x" both become
     // "html[data-theme=light] & .x": the attribute on <html>, the rest
     // inside the scope. Alone, the rule lands on the scope element itself.
     const rest = selector.slice(documentLevel[0].length).trim();
-    const inner = rest.replace(/(^|[\s>+~])(html|body)(?=$|[\s>+~:.#[])/g, "$1&").replace(/:root\b/g, "&");
+    const inner = scopeInner(rest);
     // "html[...] body .x": the body already IS the scope element.
-    if (inner.startsWith("&")) return `html${documentLevel[1]} ${inner}`;
-    return `html${documentLevel[1]} &${inner ? ` ${inner}` : ""}`;
+    const own = inner.startsWith("&") ? `html${documentLevel[2]} ${inner}` : `html${documentLevel[2]} &${inner ? ` ${inner}` : ""}`;
+    if (documentLevel[1] || !ON_ELEMENTS_TOO.test(documentLevel[2])) return own;
+    const element = scopeInner(selector);
+    return `${own},${element.includes("&") ? element : `& ${element}`}`;
   }
-  selector = selector.replace(/:root\b/g, "&");
-  selector = selector.replace(/(^|[\s>+~])(html|body)(?=$|[\s>+~:.#[])/g, "$1&");
-  return selector;
+  return scopeInner(selector);
 }
 
 // Splits a selector list on its top-level commas only. Tailwind class names

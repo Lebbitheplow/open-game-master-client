@@ -83,6 +83,32 @@ test("scopePrelude keeps the document's theme and effects attributes on <html>",
   assert.equal(scopePrelude('[data-state="open"] .x'), '[data-state="open"] .x');
 });
 
+test("scopePrelude keeps the visual theme's attributes on <html>, inside :not() and :where() too", () => {
+  // Server 0.37.0's appearance themes: data-appearance, data-theme-base and
+  // data-theme-ornaments on <html>. Left to nest, every palette was dead.
+  assert.equal(scopePrelude("html[data-appearance=kingdoms] .lobby-head"), "html[data-appearance=kingdoms] & .lobby-head");
+  assert.equal(scopePrelude("html[data-appearance][data-theme-base=plain] body"), "html[data-appearance][data-theme-base=plain] &");
+  assert.equal(scopePrelude("html[data-theme-ornaments=true][data-theme] .glass"), "html[data-theme-ornaments=true][data-theme] & .glass");
+  assert.equal(scopePrelude("html[data-theme=light]:not([data-theme-ornaments=true]) .cine-tabletop"), "html[data-theme=light]:not([data-theme-ornaments=true]) & .cine-tabletop");
+  assert.equal(scopePrelude("html:not([data-theme=light]) .cine-lobby"), "html:not([data-theme=light]) & .cine-lobby");
+  assert.equal(scopePrelude("html:not([data-effects=low]) .lobby-seat"), "html:not([data-effects=low]) & .lobby-seat");
+  // A bare :not() is not the document's: it still nests.
+  assert.equal(scopePrelude(":not([data-theme=light]) .x"), ":not([data-theme=light]) .x");
+  // A bare palette paints the page and the picker's thumbnails alike.
+  assert.equal(scopePrelude("[data-appearance=forge][data-theme=dark]"), "html[data-appearance=forge][data-theme=dark] &,& [data-appearance=forge][data-theme=dark]");
+  assert.equal(scopePrelude("[data-appearance=gothic]>.appearance-preview-frame"), "html[data-appearance=gothic] & >.appearance-preview-frame,& [data-appearance=gothic]>.appearance-preview-frame");
+  // The material defaults keep their zero specificity, on <html> and on a thumbnail.
+  assert.equal(scopePrelude(":where([data-appearance])"), ":where(html[data-appearance]) &,& :where([data-appearance])");
+  assert.equal(scopePrelude(":where([data-theme=light]) .x"), ":where(html[data-theme=light]) & .x");
+});
+
+test("flattenPrelude writes the visual theme's two forms out in full", () => {
+  const scope = ".game-root";
+  assert.equal(flattenPrelude("[data-appearance=tide]", scope), "html[data-appearance=tide] .game-root,.game-root [data-appearance=tide]");
+  assert.equal(flattenPrelude(":where([data-appearance])", scope), ":where(html[data-appearance]) .game-root,.game-root :where([data-appearance])");
+  assert.equal(flattenPrelude("html[data-appearance=kingdoms] body>canvas[aria-hidden]", scope), "html[data-appearance=kingdoms] .game-root>canvas[aria-hidden]");
+});
+
 test("splitSelectors splits on top-level commas only", () => {
   const tailwind = ".w-\\[min\\(960px\\,calc\\(100vw-2rem\\)\\)\\]";
   assert.deepEqual(splitSelectors(`${tailwind},.b`), [tailwind, ".b"]);
