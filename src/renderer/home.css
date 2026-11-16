@@ -1602,9 +1602,8 @@ html[data-theme="light"] .tt-first > .topbar.tt-header .wordmark { color: var(--
 .settings-share { padding-top: 0.75rem; border-top: 1px solid rgba(107, 99, 148, 0.2); }
 .settings-share .share-row { margin-top: 0.5rem; }
 .settings-label { font-size: 0.9rem; color: var(--ink-300); }
-/* Story memory: the two choice cards carry their own motion (controls.css);
-   every new status line rises in, so a saved, restarting or re-reading
-   state never just swaps text. */
+/* A card's status line (moving the world, Troubleshooting): every new line
+   rises in, so a working, done or failed state never just swaps text. */
 .memory-status:empty { display: none; }
 .memory-line { animation: fade-up 240ms var(--ease-snap) both; }
 .memory-line.settled { animation: none; }

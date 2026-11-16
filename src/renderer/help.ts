@@ -115,7 +115,7 @@ export function renderHelp(): void {
     section(
       "gear",
       "Settings",
-      `Settings gathers what belongs to the app itself, in four groups with a row at the top to reach each. Playing on this device: the microphone and its dictation key, playback and dice, controllers and the title screen. Your world: who plays there, sharing it, Story AI,${isAndroid ? "" : " the language your world's story memory reads (pick Many languages when your table plays in Italian, Spanish or another language),"} and moving it. Accounts and connections: saved sign-ins and older hosts. Help and maintenance: this guide, the tour, updates, and Troubleshooting: a check and a repair of the app's own server files, cached files cleared, and a summary to copy into a bug report, none of which touches anything you made. Your account, avatar and password live on each server, under its own Settings page.`,
+      `Settings gathers what belongs to the app itself, in four groups with a row at the top to reach each. Playing on this device: the microphone and its dictation key, playback and dice, controllers and the title screen. Your world: who plays there, sharing it, Story AI, and moving it.${isAndroid ? "" : " The language the Game Master's memory reads follows your world's language, picked in your world under Admin > Settings > Language."} Accounts and connections: saved sign-ins and older hosts. Help and maintenance: this guide, the tour, updates, and Troubleshooting: a check and a repair of the app's own server files, cached files cleared, and a summary to copy into a bug report, none of which touches anything you made. Your account, avatar and password live on each server, under its own Settings page.`,
     ),
   );
 }

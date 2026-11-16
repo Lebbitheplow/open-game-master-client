@@ -193,6 +193,20 @@ test("updates stay on stable until beta is chosen, and the choice is kept", () =
   assert.equal("betaUpdates" in JSON.parse(fs.readFileSync(path.join(dir, "servers.json"), "utf8")), false);
 });
 
+test("a story memory choice an older release saved is read as nothing and gone after the next save", () => {
+  const { store, dir } = freshStore();
+  const file = path.join(dir, "servers.json");
+  fs.writeFileSync(file, JSON.stringify({ version: 1, servers: [], storyMemory: "multilingual" }));
+  const old = new ServerStore(file, crypt);
+  assert.deepEqual(old.list(), []);
+  assert.equal("storyMemory" in old, false, "nothing reads it any more");
+  old.setUpdateChannel("beta");
+  const saved = JSON.parse(fs.readFileSync(file, "utf8"));
+  assert.equal("storyMemory" in saved, false);
+  assert.equal(saved.betaUpdates, true);
+  assert.equal(store.updateChannel(), "beta");
+});
+
 test("registry persists across instances and survives corruption", () => {
   const { store, dir } = freshStore();
   const entry = store.upsert({

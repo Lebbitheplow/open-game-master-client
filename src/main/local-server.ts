@@ -72,10 +72,6 @@ export class LocalServer {
   // was last time.
   private bindAll = false;
 
-  // The settings `extraEnv` handed the running server, so a caller can tell
-  // whether a changed setting is live yet.
-  private startedEnv: Record<string, string> = {};
-
   // The code that claims this world's first account, which is its admin.
   // The server is told it at start and refuses a first registration without
   // it, so the profile the shell makes is the only one that can own the
@@ -90,19 +86,11 @@ export class LocalServer {
 
   // `rendererDir` is the shell's own bundle (dist/renderer): the art it
   // carries is copied into the server tree rather than shipped twice.
-  // `extraEnv` is read at every start: settings the shell keeps for its
-  // world (the story memory model) that the server only reads at boot.
   constructor(
     private readonly payloadDir: string,
     private readonly userDataDir: string,
     private readonly rendererDir: string,
-    private readonly extraEnv: () => Record<string, string> = () => ({}),
   ) {}
-
-  // What the running server was started with; empty when it is not running.
-  runningEnv(): Record<string, string> {
-    return this.state === "running" ? { ...this.startedEnv } : {};
-  }
 
   private get runDir(): string {
     return path.join(this.userDataDir, "local-server");
@@ -359,8 +347,6 @@ export class LocalServer {
   private async launch(): Promise<void> {
     this.port = await this.pickPort();
     const log = openLog(this.logFile);
-    const extra = this.extraEnv();
-    this.startedEnv = extra;
     const child = spawn(process.execPath, [path.join(this.runDir, "server.js")], {
       cwd: this.runDir,
       env: {
@@ -386,7 +372,9 @@ export class LocalServer {
         // so the floor here is only what keeps the database writable; a
         // value already in the environment still wins.
         UPLOAD_MIN_FREE_BYTES: process.env.UPLOAD_MIN_FREE_BYTES || String(256 * 1024 * 1024),
-        ...extra,
+        // No EMBEDDING_MODEL or EMBEDDING_DTYPE of the app's own: the server
+        // picks the GM's memory model from the language its admin chose, and
+        // a model named here would override that choice.
       },
       stdio: ["ignore", log, log],
     });

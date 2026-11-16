@@ -5,7 +5,6 @@
 import type { DeckChoice, DeckInfo, FieldRect } from "./deck";
 import type { AppFacts, ReportLocalAi } from "./diagnostics";
 import type { OfferNotice, OfferTarget } from "./offer-notice";
-import type { StoryMemory, StoryMemoryStatus } from "./story-memory";
 import type { WorldPreview } from "./world-transfer";
 import type { NativeBoardApi } from "./native-board";
 
@@ -630,14 +629,6 @@ export interface OdmBridge {
   // secrets sit in the Android Keystore.
   credentialStorage?(): Promise<{ protection: "keyring" | "obscured" | "none"; keepSignIns: boolean }>;
   setKeepSignIns?(keep: boolean): Promise<void>;
-  // Story memory (src/shared/story-memory.ts): the embedding model the
-  // device world searches its story with. Desktop only; null on a desktop
-  // whose package carries no embedding runtime (Intel Macs), absent on the
-  // phone, so the setting is withheld rather than dead. Setting it saves
-  // the choice; applying restarts the world so the server picks it up.
-  storyMemory?(): Promise<StoryMemoryStatus | null>;
-  setStoryMemory?(choice: StoryMemory): Promise<StoryMemoryStatus>;
-  applyStoryMemory?(): Promise<Result<{ status: StoryMemoryStatus }>>;
   // The shell's native game screens call a host's API themselves. This
   // hands them the host's address and the live bearer token for it (the
   // device world included, by its host id), or null without a session.

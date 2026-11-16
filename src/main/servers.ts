@@ -3,7 +3,6 @@ import fs from "node:fs";
 import path from "node:path";
 import type { HomeCache } from "../shared/home-feed-logic";
 import { parseDeckChoice, type DeckChoice } from "../shared/deck";
-import { parseStoryMemory, type StoryMemory } from "../shared/story-memory";
 import type { ServerSummary, UpdateChannel } from "../shared/types";
 
 // The reserved id for the bundled offline server's account entry. Its origin
@@ -58,9 +57,6 @@ interface RegistryFile {
   portalOff?: boolean;
   // The updater offers the nightly betas too; absent means stable only.
   betaUpdates?: true;
-  // The device world's story memory (src/shared/story-memory.ts); absent
-  // means the server's English default.
-  storyMemory?: StoryMemory;
   // The Steam Deck layout forced on or off in Settings; absent means auto
   // (on on a Deck and in Steam's Game Mode).
   deckLayout?: "on" | "off";
@@ -87,8 +83,15 @@ const emptyRegistry = (): RegistryFile => ({ version: 1, servers: [] });
 
 function parseRegistry(text: string): RegistryFile | null {
   try {
-    const parsed = JSON.parse(text) as RegistryFile;
-    if (parsed && parsed.version === 1 && Array.isArray(parsed.servers)) return parsed;
+    const parsed = JSON.parse(text) as RegistryFile & { storyMemory?: unknown };
+    if (parsed && parsed.version === 1 && Array.isArray(parsed.servers)) {
+      // Releases up to 0.27 kept the device world's story memory model here
+      // and passed it to the server as EMBEDDING_MODEL, which overrode the
+      // server's own language. The server's language picks the model now, so
+      // the old choice is read as nothing and the next save leaves it out.
+      delete parsed.storyMemory;
+      return parsed;
+    }
   } catch {
     // Not JSON.
   }
@@ -514,17 +517,6 @@ export class ServerStore {
     const registry = this.load();
     if (channel === "beta") registry.betaUpdates = true;
     else delete registry.betaUpdates;
-    this.save(registry);
-  }
-
-  storyMemory(): StoryMemory {
-    return parseStoryMemory(this.load().storyMemory);
-  }
-
-  setStoryMemory(choice: StoryMemory): void {
-    const registry = this.load();
-    if (choice === "english") delete registry.storyMemory;
-    else registry.storyMemory = choice;
     this.save(registry);
   }
 

@@ -64,8 +64,7 @@ async function setupShutdown({ argv = [] } = {}) {
     // A reset the previous run asked for (src/main/reset.ts): none here.
     "./reset": { applyPendingReset: async () => null },
     "./ipc": { registerIpc: () => ({ shutdownShare() { shareStops++; return share.promise; } }) },
-    "./servers": { LOCAL_SERVER_ID: "local", ServerStore: class { storyMemory() { return ""; } deckChoice() { return ""; } } },
-    "../shared/story-memory": { storyMemorySupported: () => false },
+    "./servers": { LOCAL_SERVER_ID: "local", ServerStore: class { deckChoice() { return ""; } } },
     "./tunnel": { QuickTunnel: class {} },
     "./edit-menu": { wireContextMenus: () => {} },
     "./updater": {

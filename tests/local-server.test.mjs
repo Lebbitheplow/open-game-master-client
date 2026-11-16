@@ -26,6 +26,7 @@ const SERVER = `
 const http = require("node:http");
 require("${ALIAS}");
 if (process.env.ODM_TEST_EXIT) process.exit(Number(process.env.ODM_TEST_EXIT));
+if (process.env.ODM_TEST_ENV_FILE) require("node:fs").writeFileSync(process.env.ODM_TEST_ENV_FILE, JSON.stringify(process.env));
 http
   .createServer((req, res) => {
     res.statusCode = req.url === "/api/health" ? 200 : 404;
@@ -84,6 +85,30 @@ test("a start unpacks the payload and the world answers; stopped, it is asleep",
     assert.equal(w.local.running, false);
     assert.equal(w.local.status(false).state, "stopped");
   } finally {
+    await w.cleanup();
+  }
+});
+
+// The server picks the GM's memory model from the language its admin chose
+// (its src/lib/embeddings.ts); an EMBEDDING_MODEL in its environment would
+// pin the model over that choice, so the app never adds one.
+test("the device world starts with no embedding model of the app's own", async () => {
+  const w = await world();
+  const envFile = path.join(w.dir, "env.json");
+  const kept = { model: process.env.EMBEDDING_MODEL, dtype: process.env.EMBEDDING_DTYPE };
+  delete process.env.EMBEDDING_MODEL;
+  delete process.env.EMBEDDING_DTYPE;
+  process.env.ODM_TEST_ENV_FILE = envFile;
+  try {
+    await w.local.start();
+    const env = JSON.parse(read(envFile));
+    assert.equal(env.ODM_DEVICE_WORLD, "1", "the stand-in saw the world's own start environment");
+    assert.equal("EMBEDDING_MODEL" in env, false);
+    assert.equal("EMBEDDING_DTYPE" in env, false);
+  } finally {
+    delete process.env.ODM_TEST_ENV_FILE;
+    if (kept.model !== undefined) process.env.EMBEDDING_MODEL = kept.model;
+    if (kept.dtype !== undefined) process.env.EMBEDDING_DTYPE = kept.dtype;
     await w.cleanup();
   }
 });

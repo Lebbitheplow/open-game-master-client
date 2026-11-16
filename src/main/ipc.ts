@@ -96,12 +96,6 @@ import { requestReset, type ResetOutcome } from "./reset";
 import { systemSteamHost } from "./steam-host";
 import { addToSteam, canAddToSteam, deckOffersSteam, steamPresent, steamShortcutState, type InstallPlace } from "./steam-shortcut";
 import type { QuickTunnel } from "./tunnel";
-import {
-  parseStoryMemory,
-  storyMemoryEnv,
-  storyMemorySupported,
-  type StoryMemoryStatus,
-} from "../shared/story-memory";
 import type { Updater } from "./updater";
 import type { ShellWindow } from "./window";
 import { NativeBoard, bindNativeBoardWindow, readNativeRegistration } from "./native-board";
@@ -496,34 +490,6 @@ export function registerIpc(ctx: ShellContext): ShellIpc {
   shellIpc.handle("prefs:set-update-channel", (_event, channel: unknown) => {
     store.setUpdateChannel(channel === "beta" ? "beta" : "stable");
     updater.channelChanged();
-  });
-
-  // Story memory (src/shared/story-memory.ts). Saving never restarts the
-  // world by itself: only the shell screen knows whether a table is open in
-  // it, so it decides when to apply. Pending means the running server still
-  // uses the previous model.
-  const storyMemoryStatus = (): StoryMemoryStatus => {
-    const choice = store.storyMemory();
-    const wanted = storyMemoryEnv(choice).EMBEDDING_MODEL;
-    return {
-      choice,
-      pendingRestart: local.running && (local.runningEnv().EMBEDDING_MODEL ?? "") !== wanted,
-      worldInUse: win.isPortalView() || localPageShowing() || tunnel.status().state === "running",
-    };
-  };
-  const storyMemoryHere = storyMemorySupported(process.platform, process.arch);
-  shellIpc.handle("prefs:story-memory", () => (storyMemoryHere ? storyMemoryStatus() : null));
-  shellIpc.handle("prefs:set-story-memory", (_event, raw: unknown) => {
-    if (storyMemoryHere) store.setStoryMemory(parseStoryMemory(raw));
-    return storyMemoryStatus();
-  });
-  shellIpc.handle("prefs:apply-story-memory", async () => {
-    try {
-      if (storyMemoryHere && storyMemoryStatus().pendingRestart) await local.restart();
-      return { ok: true, status: storyMemoryStatus() };
-    } catch (err) {
-      return fail(err);
-    }
   });
 
   const prepareRemote = (id: string) => prepareRemoteConnection(id, {

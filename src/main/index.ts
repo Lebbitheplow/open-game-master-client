@@ -11,7 +11,6 @@ import { LocalServer } from "./local-server";
 import { registerIpc, type ShellIpc } from "./ipc";
 import { applyPendingReset } from "./reset";
 import { LOCAL_SERVER_ID, ServerStore, type TokenCrypt } from "./servers";
-import { storyMemoryEnv, storyMemorySupported } from "../shared/story-memory";
 import { QuickTunnel } from "./tunnel";
 import { repointRenamedShortcut } from "./steam-shortcut";
 import { systemSteamHost } from "./steam-host";
@@ -134,16 +133,9 @@ function main(): void {
     const payloadDir = app.isPackaged
       ? path.join(process.resourcesPath, "server")
       : path.join(app.getAppPath(), "vendor", "server");
-    // The story memory model is read at every start, so a changed setting
-    // reaches the server on its next (re)start. Where the package carries
-    // no embedding runtime there is nothing to choose and nothing is passed.
-    const local = new LocalServer(
-      payloadDir,
-      app.getPath("userData"),
-      path.join(__dirname, "..", "renderer"),
-      (): Record<string, string> =>
-        storyMemorySupported(process.platform, process.arch) ? storyMemoryEnv(store.storyMemory()) : {},
-    );
+    // No embedding model is passed: the world's server picks its own from
+    // the language its admin chose (Admin > Settings > Language).
+    const local = new LocalServer(payloadDir, app.getPath("userData"), path.join(__dirname, "..", "renderer"));
     const tunnel = new QuickTunnel(
       path.join(app.getPath("userData"), "bin"),
       path.join(app.getPath("userData"), "tunnel.log"),
