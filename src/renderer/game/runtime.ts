@@ -63,13 +63,18 @@ function isRootRelative(url: string): boolean {
 // shell bundled it, the host directly for a public path, and an object URL
 // fetched with the token for a protected one (client PR #30, widened from
 // bundled assets to every host path).
-const backgroundsWritten = new WeakMap<Element, string>();
+// The visual themes (server 0.37.0) hand their artwork to the stylesheet the
+// same way, as custom properties: `--theme-art-texture: url("/assets/themes/
+// ...")` on <html> (theme-mode.ts applyTheme) and on each appearance picker
+// thumbnail. Those take the same road, one property at a time.
+const cssUrlsWritten = new WeakMap<Element, Map<string, string>>();
 
-function fixBackgroundImage(element: Element): void {
-  if (!(element instanceof HTMLElement)) return;
-  const value = element.style.backgroundImage;
+function fixCssUrls(element: HTMLElement, property: string): void {
+  const value = element.style.getPropertyValue(property);
+  const written = cssUrlsWritten.get(element) ?? new Map<string, string>();
+  cssUrlsWritten.set(element, written);
   // Our own rewrite comes back through the observer; nothing to do twice.
-  if (!value || backgroundsWritten.get(element) === value) return;
+  if (!value || written.get(property) === value) return;
   if (!rootRelativeCssUrls(value).length) return;
   const client = active;
   const protectedPaths: string[] = [];
@@ -81,20 +86,30 @@ function fixBackgroundImage(element: Element): void {
     protectedPaths.push(hostPath);
     return null;
   });
-  backgroundsWritten.set(element, fixed);
-  if (fixed !== value) element.style.backgroundImage = fixed;
+  written.set(property, fixed);
+  if (fixed !== value) element.style.setProperty(property, fixed);
   if (!client) return;
   for (const hostPath of protectedPaths) {
     void objectUrlFor(client, hostPath).then((url) => {
       // The page may have painted something else meanwhile; only the value
       // this call wrote is swapped.
-      const current = element.style.backgroundImage;
-      if (!url || current !== backgroundsWritten.get(element) || !current.includes(hostPath)) return;
+      const current = element.style.getPropertyValue(property);
+      if (!url || current !== written.get(property) || !current.includes(hostPath)) return;
       hold(element, url);
       const swapped = rewriteCssUrls(current, (path) => (path === hostPath ? url : null));
-      backgroundsWritten.set(element, swapped);
-      element.style.backgroundImage = swapped;
+      written.set(property, swapped);
+      element.style.setProperty(property, swapped);
     });
+  }
+}
+
+function fixBackgroundImage(element: Element): void {
+  if (!(element instanceof HTMLElement)) return;
+  fixCssUrls(element, "background-image");
+  const style = element.style;
+  for (let i = 0; i < style.length; i++) {
+    const property = style.item(i);
+    if (property.startsWith("--")) fixCssUrls(element, property);
   }
 }
 
@@ -606,6 +621,18 @@ function guardBogusErrors(): void {
 // app's own copy. Nothing else of the runtime needs a host-less page.
 export function installLocalAssets(): void {
   patchMediaSetters();
+}
+
+// <html> carries the visual theme's artwork for every screen, with a host or
+// without one, and the app carries every theme's pictures itself. It is
+// watched from the moment the screens load: a mutation is handled before the
+// next paint, so not even the first one asks the app's own origin for them.
+let rootObserver: MutationObserver | null = null;
+
+export function installThemeArt(): void {
+  fixBackgroundImage(document.documentElement);
+  rootObserver ??= new MutationObserver(() => fixBackgroundImage(document.documentElement));
+  rootObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
 }
 
 // onSessionLost: the page's session at this world ended on its own (the

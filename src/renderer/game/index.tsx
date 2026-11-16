@@ -14,30 +14,23 @@ import { HostClient, type HostSession } from "../api/host.js";
 import { GameRouter, matchRoute } from "./router.js";
 import { setNavigation } from "./shims/next-navigation.js";
 import { resolvedParams } from "./params.js";
-import { installLocalAssets, installRuntime, uninstallRuntime } from "./runtime.js";
+import { installLocalAssets, installRuntime, installThemeArt, uninstallRuntime } from "./runtime.js";
 import { installAutoFocus } from "./autofocus.js";
 import { useSyncExternalStore } from "preact/compat";
-import { applyTheme, readThemeChoice, readUiScale } from "@/lib/theme-mode";
+import { applyTheme } from "@/lib/theme-mode";
 
 installAutoFocus();
 
 // The reader's saved theme and text size. The server applies them from its
 // root layout (ThemeApplier), which the apps never load, so a day or night
 // theme or a larger text size chosen in Settings was lost at every start
-// until it was changed again. A theme left on Auto keeps the shells' dark
-// start.
-function applySavedTheme(): void {
-  if (readThemeChoice() !== "auto") {
-    applyTheme();
-    return;
-  }
-  const scale = readUiScale();
-  if (scale === 1) return;
-  const root = document.documentElement;
-  root.style.setProperty("--ui-scale", String(scale));
-  root.style.fontSize = `${scale * 100}%`;
-}
-applySavedTheme();
+// until it was changed again. Since server 0.37.0 the same call also lays the
+// visual theme (data-appearance, its artwork) that every screen is painted
+// with, and the campaign screens apply it again on entry and exit, so it runs
+// at every start: a theme left on Auto follows the system, as on the website,
+// instead of starting dark and turning to day on entering a campaign.
+applyTheme();
+installThemeArt();
 
 type PageModule = { default: ComponentType<{ params: unknown; searchParams?: unknown }> };
 
