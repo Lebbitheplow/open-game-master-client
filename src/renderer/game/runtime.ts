@@ -624,12 +624,20 @@ export function installLocalAssets(): void {
 }
 
 // <html> carries the visual theme's artwork for every screen, with a host or
-// without one, and the app carries every theme's pictures itself. It is
-// watched from the moment the screens load: a mutation is handled before the
-// next paint, so not even the first one asks the app's own origin for them.
+// without one, and the app carries every theme's pictures itself. A value is
+// rewritten as it is set: an observer runs too late when another one (the
+// shell's data-theme watcher) reads the styles first, and each pick of a theme
+// asked the app's own origin for its four pictures. The observer stays for a
+// path the app does not carry.
 let rootObserver: MutationObserver | null = null;
 
 export function installThemeArt(): void {
+  const style = document.documentElement.style;
+  if (!Object.hasOwn(style, "setProperty")) {
+    const set = style.setProperty.bind(style);
+    style.setProperty = (property: string, value: string | null, priority?: string) =>
+      set(property, property.startsWith("--") && value ? rewriteCssUrls(value, localAsset) : value, priority);
+  }
   fixBackgroundImage(document.documentElement);
   rootObserver ??= new MutationObserver(() => fixBackgroundImage(document.documentElement));
   rootObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
