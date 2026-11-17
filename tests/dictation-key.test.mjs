@@ -4,6 +4,9 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { serverDir as findServerDir } from "../scripts/server-dir.mjs";
+// The server's rules speak the reader's language since 0.38.0 and take the
+// translator first; these checks read them in English, the source.
+const enT = (key, vars = {}) => key.replace(/\{(\w+)\}/g, (slot, name) => (name in vars ? String(vars[name]) : slot));
 
 // The hold-to-dictate key (server issue 291) is chosen on the server's
 // screens, which the apps draw, and refused there when it would fight
@@ -61,16 +64,16 @@ test("the desktop menu's accelerators and the pad's push-to-talk key are refused
   assert.ok(accelerators.includes("F11"), "the full screen role's shortcut was found");
   for (const accelerator of accelerators) {
     for (const chord of chordsOf(accelerator)) {
-      assert.ok(chordProblem(chord), `${accelerator} (${JSON.stringify(chord)}) is free as a dictation key, but the menu takes it first`);
+      assert.ok(chordProblem(enT, chord), `${accelerator} (${JSON.stringify(chord)}) is free as a dictation key, but the menu takes it first`);
     }
   }
   const ptt = /const PTT_CODE = "([^"]+)"/.exec(gamepadSource)?.[1];
   assert.equal(ptt, "Backquote");
-  assert.match(chordProblem({ code: ptt, ctrl: false, alt: false, shift: false, meta: false, label: "`" }), /push-to-talk/);
+  assert.match(chordProblem(enT, { code: ptt, ctrl: false, alt: false, shift: false, meta: false, label: "`" }), /push-to-talk/);
 });
 
 test("a key the server accepts is one no menu item or pad button sends", { skip: !fs.existsSync(rulesFile) }, async () => {
   const { chordProblem } = await import(pathToFileURL(rulesFile).href);
-  assert.equal(chordProblem({ code: "KeyM", ctrl: false, alt: true, shift: false, meta: false, label: "M" }), null);
-  assert.equal(chordProblem({ code: "F8", ctrl: false, alt: false, shift: false, meta: false, label: "F8" }), null);
+  assert.equal(chordProblem(enT, { code: "KeyM", ctrl: false, alt: true, shift: false, meta: false, label: "M" }), null);
+  assert.equal(chordProblem(enT, { code: "F8", ctrl: false, alt: false, shift: false, meta: false, label: "F8" }), null);
 });

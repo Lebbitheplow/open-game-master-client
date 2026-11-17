@@ -17,7 +17,12 @@ const serverDir = findServerDir(repo);
 test("the shell's route lines match the server's", () => {
   const tiles = fs.readFileSync(path.join(serverDir, "src/app/home/QuickTiles.tsx"), "utf8");
   for (const [key, text] of Object.entries(STARTING_ROUTES)) {
-    assert.ok(tiles.includes(`${key}: ${JSON.stringify(text)}`) || tiles.includes(`${key}: "${text.replaceAll('"', '\\"')}"`), `${key}: ${text}`);
+    // Since server 0.38.0 the tile's line reads through the reader's
+    // translator, t("..."), beside the tile's id; the English is the same.
+    const quoted = JSON.stringify(text);
+    const keyed = tiles.includes(`${key}: ${quoted}`) || tiles.includes(`${key}: "${text.replaceAll('"', '\\"')}"`);
+    const translated = new RegExp(`id: "${key}"[^\\n]*t\\(${quoted.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\)`).test(tiles);
+    assert.ok(keyed || translated, `${key}: ${text}`);
   }
 });
 

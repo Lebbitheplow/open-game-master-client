@@ -20,6 +20,9 @@ import {
   storyModelsRequest,
 } from "../dist/shared/ai-setup.js";
 import { serverDir as findServerDir } from "../scripts/server-dir.mjs";
+// The server's rules speak the reader's language since 0.38.0 and take the
+// translator first; these checks read them in English, the source.
+const enT = (key, vars = {}) => key.replace(/\{(\w+)\}/g, (slot, name) => (name in vars ? String(vars[name]) : slot));
 
 const repo = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const serverDir = findServerDir(repo);
@@ -173,18 +176,22 @@ test("the door's Fast models are the server's", { skip: !fs.existsSync(serverSpe
     "gpt-4o", "ft:gpt-6-sol:org", "gpt-6", "o4-mini", "", "  ", "  gpt-6-sol  ",
   ];
   for (const name of names) {
-    assert.equal(openAiFastModel(name), server.apiSpeedEligibility({ endpointKind: "openai", model: name }).ok, `OpenAI: ${JSON.stringify(name)}`);
+    assert.equal(openAiFastModel(name), server.apiSpeedEligibility(enT, { endpointKind: "openai", model: name }).ok, `OpenAI: ${JSON.stringify(name)}`);
   }
   for (const [harnessId, models] of [["claude", claudeModels], ["codex", codexModels], ["opencode", codexModels], ["grok", []]]) {
     for (const model of ["opus", "sonnet", "haiku", "claude-opus-5", "gpt-6-sol", "gpt-5.4", ""]) {
       assert.equal(
         harnessFastModel(harnessId, model, models),
-        server.agentSpeedEligibility({ harnessId, model, models }).ok,
+        server.agentSpeedEligibility(enT, { harnessId, model, models }).ok,
         `${harnessId}: ${JSON.stringify(model)}`,
       );
     }
   }
-  assert.equal(FAST_COST_NOTE, server.FAST_COST_NOTE, "the price is said in the same words");
+  // Since server 0.38.0 the admin's note is a translated line of the speed
+  // field (src/app/admin/SpeedField.tsx), no longer a constant beside the rules.
+  const field = path.join(path.dirname(path.dirname(serverSpeedTier)), "app", "admin", "SpeedField.tsx");
+  const said = server.FAST_COST_NOTE ?? (fs.existsSync(field) && fs.readFileSync(field, "utf8").includes(`t(${JSON.stringify(FAST_COST_NOTE)})`) ? FAST_COST_NOTE : null);
+  assert.equal(FAST_COST_NOTE, said, "the price is said in the same words");
 });
 
 // ---- the picture and transcription models, from the key's own list ----

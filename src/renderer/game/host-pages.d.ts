@@ -39,3 +39,19 @@ declare module "@/lib/theme-mode" {
   export function readThemeChoice(): ThemeChoice;
   export function readUiScale(): number;
 }
+
+// The reader's language (src/lib/locale.tsx), which the server applies from
+// its root layout; the game root applies the device's choice here when the
+// screens load.
+declare module "@/lib/locale" {
+  export type LocaleChoice = "auto" | "en" | "fr";
+  export function applyLocale(): void;
+  export function readLocaleChoice(): LocaleChoice;
+  export function resolveLocale(choice: LocaleChoice): "en" | "fr";
+}
+
+// The French catalog's loader (src/lib/i18n/catalog-loader.ts): the
+// catalog is its own chunk, fetched when the reader's language needs it.
+declare module "@/lib/i18n/catalog-loader" {
+  export function loadCatalog(locale: "en" | "fr"): Promise<void>;
+}
