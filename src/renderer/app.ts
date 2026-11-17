@@ -12,6 +12,7 @@ import {
   updateNoteFor,
 } from "./chrome.js";
 import { closeDrawer, createDrawer, isDrawerOpen, toggleDrawer } from "./drawer.js";
+import { bootTheme } from "../shared/theme-boot.js";
 import { startGamepad } from "./gamepad.js";
 import { showShellToast } from "./toast.js";
 import { renderHome } from "./home.js";
@@ -240,6 +241,32 @@ new MutationObserver(() => {
   const mode = document.documentElement.dataset.theme === "light" ? "light" : "dark";
   void window.odm.setTheme?.(mode);
 }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+// The saved visual theme and brightness, laid now so the home, the drawer
+// and Settings open in them; the game screens' applyTheme (theme-mode.ts)
+// lays the same two, plus the theme's artwork, once their bundle runs.
+// With brightness on Auto the server follows the system from its root
+// layout, which the apps never mount, so the shell follows it here.
+function readPreference(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+const lightScheme = window.matchMedia("(prefers-color-scheme: light)");
+function layBrightness(theme: "dark" | "light"): void {
+  const root = document.documentElement;
+  root.dataset.theme = theme;
+  root.style.colorScheme = theme;
+}
+const boot = bootTheme(readPreference("odm.appearance"), readPreference("odm.theme"), lightScheme.matches);
+if (!document.documentElement.dataset.appearance) document.documentElement.dataset.appearance = boot.appearance;
+layBrightness(boot.theme);
+lightScheme.addEventListener("change", () => {
+  const saved = readPreference("odm.theme");
+  if (saved !== "dark" && saved !== "light") layBrightness(lightScheme.matches ? "light" : "dark");
+});
 
 // A second window opened for the table view (phase 28) boots straight into
 // the campaign's table route instead of the home screen.

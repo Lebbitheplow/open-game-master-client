@@ -2,7 +2,7 @@
 // the page column screens render into, the back link, intro block and form
 // card, the invite banner, and the footer with the updater controls.
 import type { UpdateStatus } from "../shared/types";
-import { bookMark, button, chip, el, icon, iconButton, spinner } from "./dom.js";
+import { brandMark, button, chip, el, icon, iconButton, spinner } from "./dom.js";
 import { renderDrawer, toggleDrawer } from "./drawer.js";
 import { unmountGame } from "./game-screen.js";
 import { renderHelp } from "./help.js";
@@ -92,7 +92,7 @@ export function topbar(): HTMLElement {
   const brand = el("button", atHome ? "brand" : "brand link");
   brand.type = "button";
   brand.dataset.tour = "brand";
-  brand.append(bookMark(), el("span", "wordmark", "Open Game Master"));
+  brand.append(brandMark(), el("span", "wordmark", "Open Game Master"));
   brand.setAttribute("aria-label", atHome ? "Open Game Master" : "Back home");
   if (!atHome) {
     brand.addEventListener("click", goHome);
@@ -231,7 +231,7 @@ export function backLink(label: string, target: () => void): HTMLButtonElement {
 // visitor.
 export function intro(title: string, subtitle: string): HTMLElement {
   const wrap = el("div", "intro");
-  wrap.append(bookMark(true));
+  wrap.append(brandMark(true));
   const text = el("div");
   const heading = el("h1");
   heading.append(el("span", "gold-face", title));

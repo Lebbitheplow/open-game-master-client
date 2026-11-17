@@ -121,12 +121,11 @@ export function spinner(big = false): HTMLElement {
   return wrap;
 }
 
-// The app's mark: the closed book the title screen wears, the same
-// painting the server's pages use (it ships beside the game sheet as
-// game/ui-art/book-closed.webp).
-export function bookMark(big = false): HTMLImageElement {
-  const img = el("img", big ? "brand-book big" : "brand-book");
-  img.src = "./game/ui-art/book-closed.webp";
+// The app's mark: the gold d20 of the app icon, the same file the server's
+// pages use (it ships beside the game sheet as game/ui-art/d20-mark.svg).
+export function brandMark(big = false): HTMLImageElement {
+  const img = el("img", big ? "brand-mark big" : "brand-mark");
+  img.src = "./game/ui-art/d20-mark.svg";
   img.alt = "";
   img.draggable = false;
   return img;

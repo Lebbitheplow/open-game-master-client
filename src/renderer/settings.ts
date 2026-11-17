@@ -15,7 +15,7 @@ import {
 } from "./chrome.js";
 import { button, chip, copyText, el, icon, input, spinner } from "./dom.js";
 import type { IconName } from "./dom.js";
-import { isGameShowing, mountDeviceSettings } from "./game-screen.js";
+import { isGameShowing, mountAppearance, mountDeviceSettings } from "./game-screen.js";
 import { offlineToggle, renderHome } from "./home.js";
 import { GUIDE_URL, renderHelp } from "./help.js";
 import { openLocal, shareRow } from "./local.js";
@@ -48,6 +48,36 @@ export function row(label: string, control: HTMLElement): HTMLElement {
   const line = el("div", "settings-row");
   line.append(el("span", "grow", label), control);
   return line;
+}
+
+// The visual theme and day or night: the server's AppearancePicker, drawn by
+// the game bundle into this card. The title screen, the drawer, these
+// screens and every table follow the choice; Follow campaign keeps Arcane
+// here and takes each campaign's own theme at its table.
+function appearanceSection(): HTMLElement {
+  const { card, body } = section(
+    "sparkles",
+    "Appearance",
+    "The look of the whole app on this device: its colours, materials and painted borders, by day or by night.",
+  );
+  const host = el("div", "game-root device-settings");
+  host.append(spinner());
+  body.append(host);
+  let gone = false;
+  let unmount: (() => void) | null = null;
+  onLeaveScreen(() => {
+    gone = true;
+    unmount?.();
+  });
+  void mountAppearance(host)
+    .then((release) => {
+      if (gone) release();
+      else unmount = release;
+    })
+    .catch(() => {
+      host.replaceChildren(el("p", "hint", "The theme choices did not load."));
+    });
+  return card;
 }
 
 // Microphone, playback, levels and dice: the server's own DeviceSettings
@@ -714,8 +744,8 @@ export function renderSettings(): void {
       {
         id: "settings-device",
         label: "Playing on this device",
-        detail: "Only on this device: sound, microphone, dice, controllers and the title screen.",
-        cards: [audioSection(), deckSection(), homeSection()],
+        detail: "Only on this device: the look, sound, microphone, dice, controllers and the title screen.",
+        cards: [appearanceSection(), audioSection(), deckSection(), homeSection()],
       },
       {
         id: "settings-world",

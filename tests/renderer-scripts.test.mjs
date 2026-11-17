@@ -27,7 +27,8 @@ function walk(dir) {
 }
 
 function linked(html, pattern) {
-  return [...html.matchAll(pattern)].map((match) => path.basename(match[1])).sort();
+  // The path beside the page ("game/themes.css" sits in the game folder).
+  return [...html.matchAll(pattern)].map((match) => path.normalize(match[1])).sort();
 }
 
 test("every renderer page loads its scripts as modules", () => {

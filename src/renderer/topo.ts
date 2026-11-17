@@ -18,6 +18,22 @@
   const FRAME_MS = 50;
   const RENDER_SCALE = 0.75;
 
+  // The lines take the visual theme's night accent (--theme-night-amber-500,
+  // from game/themes.css), read again only when <html> changes theme, never
+  // per frame. Arcane's gold until a theme is laid.
+  let accent = "212, 171, 58";
+  function readAccent(): void {
+    const value = getComputedStyle(document.documentElement).getPropertyValue("--theme-night-amber-500").trim();
+    const hex = /^#([0-9a-f]{6})$/i.exec(value)?.[1];
+    accent = hex ? [0, 2, 4].map((at) => parseInt(hex.slice(at, at + 2), 16)).join(", ") : "212, 171, 58";
+  }
+  readAccent();
+  // A static backdrop (reduced motion) is drawn again in the new colour.
+  new MutationObserver(() => {
+    readAccent();
+    if (reducedMotion) draw(started);
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-appearance"] });
+
   function hash3(x: number, y: number, z: number): number {
     let h = (x * 374761393 + y * 668265263 + z * 2147483647) | 0;
     h = (h ^ (h >>> 13)) | 0;
@@ -103,7 +119,7 @@
 
     LEVELS.forEach((iso, levelIndex) => {
       const isIndexLine = levelIndex % INDEX_EVERY === 1;
-      ctx.strokeStyle = isIndexLine ? "rgba(212, 171, 58, 0.115)" : "rgba(212, 171, 58, 0.065)";
+      ctx.strokeStyle = isIndexLine ? `rgba(${accent}, 0.115)` : `rgba(${accent}, 0.065)`;
       ctx.beginPath();
       for (let row = 0; row < rows - 1; row += 1) {
         for (let col = 0; col < cols - 1; col += 1) {
