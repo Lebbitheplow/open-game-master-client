@@ -32,6 +32,7 @@ interface GameMount {
 
 interface GameModule {
   mountDeviceSettings(root: HTMLElement): () => void;
+  mountAppearance?(root: HTMLElement): () => void;
   // Fetches the page module for a host path ahead of its first render.
   prefetch?(path: string): void;
   mountGame(
@@ -122,6 +123,13 @@ export async function mountDeviceSettings(root: HTMLElement): Promise<() => void
   const game = await loadBundle();
   root.replaceChildren();
   return game.mountDeviceSettings(root);
+}
+
+export async function mountAppearance(root: HTMLElement): Promise<() => void> {
+  const game = await loadBundle();
+  if (!game.mountAppearance) throw new Error("This build has no theme picker");
+  root.replaceChildren();
+  return game.mountAppearance(root);
 }
 
 // The shell's back gesture inside a world: the previous page, or false at

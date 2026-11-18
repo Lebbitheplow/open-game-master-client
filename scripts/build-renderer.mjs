@@ -18,6 +18,7 @@ import { builtinModules } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { scopeCss } from "./scope-css.mjs";
+import { buildThemeTokens } from "./theme-tokens.mjs";
 import { serverDir as findServerDir } from "./server-dir.mjs";
 
 const repo = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -298,5 +299,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   fs.rmSync(path.join(outDir, "game"), { recursive: true, force: true });
   await build({ ...gameBuildOptions(server), outdir: path.join(outDir, "game") });
   buildGameCss(server, path.join(outDir, "game"));
+  buildThemeTokens(server, path.join(outDir, "game"));
   console.log("renderer bundled");
 }

@@ -9,6 +9,12 @@ declare module "@/app/*" {
 
 // The server's device panel (src/components/DeviceSettings.tsx), mounted on
 // the shell's Settings screen.
+// The visual theme picker (server 0.37.0), for the shell's Settings.
+declare module "@/components/AppearancePicker" {
+  import type { ComponentType } from "preact/compat";
+  export const AppearancePicker: ComponentType<Record<string, never>>;
+}
+
 declare module "@/components/DeviceSettings" {
   import type { ComponentType } from "preact/compat";
   export const DeviceSettings: ComponentType<Record<string, never>>;

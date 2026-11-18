@@ -18,6 +18,7 @@ const www = path.join(mobile, "www");
 const { buildGameCss, gameBuildOptions, rendererBuildOptions, serverDir } = await import(
   pathToFileURL(path.join(repo, "scripts", "build-renderer.mjs")).href
 );
+const { buildThemeTokens } = await import(pathToFileURL(path.join(repo, "scripts", "theme-tokens.mjs")).href);
 const shared = { ...rendererBuildOptions, nodePaths: [path.join(mobile, "node_modules")] };
 
 fs.rmSync(www, { recursive: true, force: true });
@@ -73,6 +74,7 @@ await build({
   outdir: path.join(www, "game"),
 });
 buildGameCss(server, path.join(www, "game"));
+buildThemeTokens(server, path.join(www, "game"));
 
 for (const name of ["style.css", "controls.css", "home.css", "story.webp"]) {
   fs.copyFileSync(path.join(repo, "src", "renderer", name), path.join(www, name));
