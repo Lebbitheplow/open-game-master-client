@@ -1,4 +1,11 @@
 {
   "note": "Advisories npm audit reports that are accepted for now, each with why and until when. scripts/check-audit.mjs fails on any high or critical advisory not listed here, and on any entry past its expiry, so an exception is looked at again rather than forgotten. Moderate advisories are reported but not gated: today that is the sprintf-js chain inside electron-builder's own Electron downloader (@electron/get > global-agent > roarr), which runs only on the release build machine.",
-  "exceptions": []
+  "exceptions": [
+    {
+      "advisory": "GHSA-fc5q-39xc-vjpf",
+      "package": "picomatch",
+      "reason": "Every picomatch in the desktop and mobile lockfiles is a development dependency (build and test tooling matching this repo's own glob patterns), so no app ships it and no player's input reaches it. No patched picomatch exists: the advisory covers every release up to 4.0.7, the newest. The server repository accepts the same advisory until the same date.",
+      "expires": "2026-12-18"
+    }
+  ]
 }
