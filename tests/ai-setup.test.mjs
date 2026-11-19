@@ -100,6 +100,11 @@ test("an agent the device already has narrates every campaign, and no key is eve
     harnessPatch({ choice: "harness", apiKey: "", model: "", utilityModel: "", harness: { id: "pi", model: "anthropic/claude-opus-5", utilityModel: "" } }).patch.harness.id,
     "pi",
   );
+  // The Antigravity CLI, the sixth (server PR 1041), likewise.
+  assert.equal(
+    harnessPatch({ choice: "harness", apiKey: "", model: "", utilityModel: "", harness: { id: "antigravity", model: "gemini-3-pro", utilityModel: "" } }).patch.harness.id,
+    "antigravity",
+  );
   assert.deepEqual(harnessPatch({ choice: "harness", apiKey: "", model: "", utilityModel: "" }), { error: "Choose a program first." });
   assert.deepEqual(
     harnessPatch({ choice: "harness", apiKey: "", model: "", utilityModel: "", harness: { id: "bash", model: "", utilityModel: "" } }),

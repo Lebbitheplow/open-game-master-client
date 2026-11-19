@@ -1,6 +1,6 @@
 // Story AI's fourth door on a computer: "Use an agent I already have". The
 // device world's own server lists the agent programs it can start (Claude
-// Code, Codex, opencode, Grok Build, Pi), signed in and locked down, and the
+// Code, Codex, opencode, Grok Build, Pi, the Antigravity CLI), signed in and locked down, and the
 // player picks one and a model. Nothing is looked for or stored by the shell
 // itself: the server is what will start the program, so its answer is the
 // only one that counts, and no vendor password or key is ever asked for.
@@ -80,7 +80,7 @@ function drawPicker(
     backLink("Story AI", back),
     intro(
       "Use an agent you already have",
-      "Claude Code, Codex, opencode, Grok Build or Pi tells the story on its own sign-in. It gets none of its own tools: only the table's rules, turn by turn, the same as the built-in storyteller.",
+      "Claude Code, Codex, opencode, Grok Build, Pi or the Antigravity CLI tells the story on its own sign-in. It gets none of its own tools: only the table's rules, turn by turn, the same as the built-in storyteller.",
     ),
     choices,
     button("quiet", "Check again", () => renderHarnessPicker(finish, back, true), "refresh"),

@@ -98,7 +98,8 @@ export interface AiSetup {
   model: string;
   utilityModel: string;
   // "harness": an agent program already installed and signed in on this
-  // computer (Claude Code, Codex, opencode, Grok Build, Pi) narrates instead.
+  // computer (Claude Code, Codex, opencode, Grok Build, Pi, the Antigravity
+  // CLI) narrates instead.
   harness?: { id: HarnessId; model: string; utilityModel: string };
   // The provider's paid Fast tier (server issue 255), for the storyteller.
   // On OpenAI the server asks for it for any named model, at the premium
@@ -115,7 +116,7 @@ export interface AiSetup {
 // reads them (its guided setup's listing), with the catalog's pick.
 export type AiModelsResult = Result<{ models: Array<{ id: string; label: string }>; recommended: string }>;
 
-export type HarnessId = "claude" | "codex" | "opencode" | "grok" | "pi";
+export type HarnessId = "claude" | "codex" | "opencode" | "grok" | "pi" | "antigravity";
 
 // One agent program as the device world's server sees it (its
 // GET /api/admin/harness). The shell never looks for programs itself: the

@@ -127,7 +127,7 @@ export function renderLocalAi(fromHome = false, aiStatus: LocalAiStatus | null =
       choice(
         "wand",
         "An agent you already have",
-        "Claude Code, Codex, opencode, Grok Build or Pi tells the story on its own sign-in, with none of its own tools.",
+        "Claude Code, Codex, opencode, Grok Build, Pi or the Antigravity CLI tells the story on its own sign-in, with none of its own tools.",
         () => renderHarnessPicker(finishAi, () => renderLocalAi()),
       ),
     );
