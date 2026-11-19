@@ -418,6 +418,12 @@ p.error:empty { display: none; }
 }
 .ornate:where(:not(.game-root *))::before { top: 7px; left: 7px; border-width: 1px 0 0 1px; }
 .ornate:where(:not(.game-root *))::after { bottom: 7px; right: 7px; border-width: 0 1px 1px 0; }
+/* A card that is also .grain (a Settings section, a guide section, the tour
+   card) shares ::after with the grain. The grain's inset pinned the
+   bottom-right bracket to the top left, and its 5% opacity, noise and
+   rounded corners all but hid it. The bracket wins, as the server's
+   .ornate.texture-noise::before does for its top-left one. */
+.ornate.grain:where(:not(.game-root *))::after { top: auto; left: auto; opacity: 1; background-image: none; border-radius: 0; }
 
 .hero {
   padding: 1.5rem 1.6rem;
