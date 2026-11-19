@@ -1,8 +1,9 @@
-// The guided tour: a spotlight that walks a newcomer through the shell's
-// doors one at a time, with a card explaining each. Runs once on first
-// launch and again whenever Help or Settings asks for it. The decisions
-// (which steps apply, where the card goes) are in src/shared/tour-logic.ts;
-// this file owns the overlay, the drawer, the keyboard and the clock.
+// The guided tour: a spotlight on the three things a newcomer needs on the
+// title screen, with a short card for each. Runs once on first launch and
+// again whenever Help or Settings asks for it; everything else is in the
+// user guide (help.ts), read when it is wanted. The decisions (which steps
+// apply, where the card goes) are in src/shared/tour-logic.ts; this file
+// owns the overlay, the drawer, the keyboard and the clock.
 import {
   markTourSeen,
   placeCard,
@@ -17,81 +18,28 @@ import { isAndroid, state } from "./state.js";
 
 export const APP_TOUR_ID = "app";
 
-const localModels = isAndroid ? "" : ", or a local model installed on this machine";
-const storyAiBody = `Story AI is what the world on this device plays with: it shows what is set now, then offers no AI, an AI on your OpenAI API key${localModels}. Who runs each table is still chosen when you make the campaign. To play with AI on someone else's server, connect to an AI-enabled server.`;
-const wayBack = isAndroid
-  ? "The back gesture at a page's root does the same."
-  : "Ctrl+M does the same from anywhere.";
-
-// data-tour values are set where the elements are built (drawer.ts,
-// home.ts, chrome.ts). A step names its targets best first; a missing
-// first choice falls through to the next with the fallback wording.
+// data-tour values are set where the elements are built (home.ts,
+// chrome.ts). Each card speaks only of what its spotlight is on, and a step
+// whose target is not on screen is skipped: the first one shows only while
+// the device world has yet to begin.
 export const APP_TOUR_STEPS: TourStep[] = [
   {
-    id: "welcome",
-    title: "Welcome to Open Game Master",
-    body: "Your worlds, your servers and your friends' tables all gather here. This short tour shows where everything lives. You can replay it any time from Help.",
-    anchors: [],
+    id: "begin",
+    title: "Play your own world",
+    body: `Start playing sets one up on this ${isAndroid ? "device" : "computer"}.`,
+    anchors: ["hero-begin"],
   },
   {
-    id: "add-server",
-    title: "Join a friend's table, or add a server",
-    body: "Have an invite? Type the room code the host read out into the sigil boxes below, paste the link, or scan its QR code where the app has a camera. The menu also connects to a self-hosted server by address.",
-    anchors: ["tile-join", "home-invite", "tile-add-server", "add-server", "invite"],
-  },
-  {
-    id: "hosts",
-    title: "Your hosts",
-    body: "Every server you have signed in to, and the world that lives on this device, are listed here. Tap a server to enter it, or this device's world to make it the one the menu opens. The dot shows whether it is online right now.",
-    anchors: ["hosts"],
-  },
-  {
-    id: "story-ai",
-    title: "Story AI for your world",
-    body: storyAiBody,
-    anchors: ["tile-story-ai", "drawer-story-ai", "hero"],
-    anchorBodies: { "drawer-story-ai": storyAiBody },
-    fallbackBody: `Begin your world and Story AI appears in the menu. It chooses who tells the story: a human at the table, an AI billed to your OpenAI API key${localModels}. Or connect to an AI-enabled server and play there.`,
-  },
-  {
-    id: "workshop",
-    title: "The GM workshop",
-    body: "The Workshop is where a Game Master preps: maps, monsters, NPCs, lore and handouts, ready to drop into any campaign.",
-    anchors: ["tile-workshop", "hero"],
-    fallbackBody:
-      "Once your world has begun, a Workshop line appears in this menu: the Game Master's prep bench for maps, monsters, NPCs, lore and handouts.",
-  },
-  {
-    id: "characters",
-    title: "Your characters",
-    body: "Keep a library of heroes to bring into any campaign, or build one in the wizard. Every lobby also offers ready-made heroes, for playing in a minute.",
-    anchors: ["tile-characters", "hero"],
-    fallbackBody:
-      "Once your world has begun, a Characters line appears in this menu for building your adventurers and keeping a library of them.",
-  },
-  {
-    id: "campaign",
-    title: "Start a campaign",
-    body: "Quick start is a prepared one-evening adventure with ready-made heroes; New campaign builds your own table. Both open on the host named above them, and Change picks another.",
-    anchors: ["tile-quick-start", "tile-new-campaign", "hero"],
-    // No Quick start where the host has no AI storyteller to run it.
-    anchorBodies: {
-      "tile-new-campaign": "New campaign builds your own table: its world, its rules and your friends. It opens on the host named above it, and Change picks another.",
-    },
-    fallbackBody:
-      "Begin your world here. Once it is running, a New campaign line appears in this menu for starting adventures and inviting friends with a room code.",
+    id: "join",
+    title: "Join a friend's table",
+    body: "Got a room code or an invite link? Enter it here.",
+    anchors: ["home-invite"],
   },
   {
     id: "tools",
-    title: "Settings, help and the menu",
-    body: "Updates, sharing your world online, Story AI and this tour live under the gear. The question mark opens the user guide, and the medallion opens the menu with your hosts and invites.",
+    title: "Guide, settings and menu",
+    body: "The question mark opens the guide and the gear opens Settings. The round button is the menu, with your worlds and servers.",
     anchors: ["topbar-tools"],
-  },
-  {
-    id: "back",
-    title: "Finding your way back",
-    body: `From inside any world, the account menu's App home item brings you back to this screen, and its App settings and App guide items open those over the table. ${wayBack} Tap the wordmark on any screen here to return home.`,
-    anchors: ["brand"],
   },
 ];
 

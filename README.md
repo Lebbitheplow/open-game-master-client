@@ -148,7 +148,7 @@ of this repository's release workflow:
 <td width="50%" valign="top" align="center">
 <img src="https://raw.githubusercontent.com/Lebbitheplow/open-game-master/main/public/sidebar-icons/characters.webp" width="56"><br>
 <b>One home, and a guided first launch</b><br>
-<sub>The app's home is your world's home: the table you were last at fills the screen with its latest scene and a "when last we left" recap, and your other tables sit as save slots grouped by host. A first launch asks your name, who tells the story and how it sounds, and a guided tour shows where everything lives.</sub>
+<sub>The app's home is your world's home: the table you were last at fills the screen with its latest scene and a "when last we left" recap, and your other tables sit as save slots grouped by host. A first launch asks your name, who tells the story and how it sounds, and a three-step tour points out the ways in.</sub>
 </td>
 </tr>
 </table>

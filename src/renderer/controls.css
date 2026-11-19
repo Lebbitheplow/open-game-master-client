@@ -516,7 +516,6 @@ details.tuning[open]:where(:not(.game-root *)) > :not(summary) { animation: fade
   text-transform: uppercase;
   color: var(--gold-300);
 }
-.settings-group-detail { margin-top: 0.15rem !important; font-size: 0.82rem; color: var(--ink-500); }
 @media (prefers-reduced-motion: reduce) {
   .settings-jump { transition: none; }
 }

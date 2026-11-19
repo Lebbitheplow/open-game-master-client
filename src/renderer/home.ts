@@ -388,6 +388,8 @@ function localBlock(host: HomeHost | null): HTMLElement {
     actions.append(enterButton("Try again", (btn) => void playLocal(btn), "refresh"));
     if (window.odm.localRepair) actions.append(ghostButton("Repair", (btn) => void repairLocal(btn), "refresh"));
   } else if (local.firstRun) {
+    // The tour's first step points here, and only here.
+    block.dataset.tour = "hero-begin";
     block.append(reveal(eyebrow("Your first tale"), 140), reveal(goldTitle("Begin your world", true), 220));
     block.append(
       reveal(
@@ -811,7 +813,7 @@ function slots(feed: HomeFeed, primary: HomeHost | null): HTMLElement {
       el(
         "p",
         "tt-slots-note",
-        "Tables hosted on another player's device only open while that app is online. You can rejoin the moment their host comes back.",
+        "Tables hosted on another player's device only open while their app is online.",
       ),
     );
   }
@@ -869,7 +871,7 @@ function joinPanel(): { panel: HTMLElement; focus: () => void } {
   panel.append(
     ...brackets(),
     el("h2", "tt-below-eyebrow", "Join by sigil"),
-    el("p", "tt-below-lede", "A friend running a table gives you an eight-letter room code. An invite link or a server address works here too."),
+    el("p", "tt-below-lede", "Enter a friend's room code. An invite link or a server address works too."),
   );
   const form = el("form", "tt-join-form");
   const sigil = el("label", "tt-sigil");

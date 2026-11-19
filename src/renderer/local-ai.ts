@@ -145,7 +145,7 @@ export function renderLocalAi(fromHome = false, aiStatus: LocalAiStatus | null =
     fromHome ? backLink("Home", () => renderHome()) : null,
     intro(
       "Story AI for this device's world",
-      `The AI services every campaign in the world on this ${isAndroid ? "device" : "computer"} can use. Who runs a particular table (the AI, you, or a friend) is chosen when that campaign is made. Change this any time from Story AI on the home screen.`,
+      "For every campaign in this world. Who runs each table (the AI, you, or a friend) is chosen when that campaign is made.",
     ),
     currentCard(currentSummary),
     localAiStatusCard(aiStatus),
