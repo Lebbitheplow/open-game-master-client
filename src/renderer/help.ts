@@ -60,7 +60,7 @@ export function renderHelp(): void {
         showOverlay("help", backLink("Back to the game", () => closeOverlay()), ...nodes)
     : (...nodes: (HTMLElement | null)[]) => show("mid", backLink("Home", () => renderHome()), ...nodes);
   present(
-    intro("User guide", "Where everything lives, and how to get around."),
+    intro("User guide", ""),
     actions,
     section(
       "menu",
@@ -115,7 +115,8 @@ export function renderHelp(): void {
     section(
       "gear",
       "Settings",
-      `Settings gathers what belongs to the app itself, in four groups with a row at the top to reach each. Playing on this device: the microphone and its dictation key, playback and dice, controllers and the title screen. Your world: who plays there, sharing it, Story AI, and moving it.${isAndroid ? "" : " The language the Game Master's memory reads follows your world's language, picked in your world under Admin > Settings > Language."} Accounts and connections: saved sign-ins and older hosts. Help and maintenance: this guide, the tour, updates, and Troubleshooting: a check and a repair of the app's own server files, cached files cleared, and a summary to copy into a bug report, none of which touches anything you made. Your account, avatar and password live on each server, under its own Settings page.`,
+      `The app's Settings covers this ${device} and the world it hosts. Your account, avatar and password live on each server, under its own Settings page.${isAndroid ? "" : " The language the Game Master's memory reads follows your world's language, picked in your world under Admin > Settings > Language."}`,
+      `Troubleshooting, at the foot of Settings, checks and repairs the app's own server files, clears cached files and copies a summary for a bug report. None of that touches anything you made.`,
     ),
   );
 }

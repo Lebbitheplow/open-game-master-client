@@ -282,18 +282,13 @@ function kokoroElsewhere(): HTMLDetailsElement {
   return box;
 }
 
-// setup: drawn by the guided setup, where the screen's own heading says
-// what the card is for, and a missing OpenAI key is added without leaving
-// the setup.
+// setup: drawn by the guided setup, where a missing OpenAI key is added
+// without leaving the setup.
 export function worldMediaSection(setup = false): HTMLElement | null {
   const odm = window.odm;
   if (!odm.localNarration || !odm.localSetNarration || !odm.localSoundLibrary) return null;
   if (state.local.state === "unavailable" || (state.local.firstRun && !setup)) return null;
-  const { card, body } = section(
-    "volume",
-    "Narration and sound",
-    setup ? "" : "What reads the story aloud at your tables, and the music and ambience they play, for every campaign in your world.",
-  );
+  const { card, body } = section("volume", "Narration and sound", "");
 
   // ---- reading aloud ----
   const narrationHead = el("span", "settings-label", "Reading the story aloud");
@@ -434,7 +429,7 @@ export function renderMediaSetup(done: () => void): void {
     "mid",
     intro(
       "Voices and music",
-      "How your tables sound: what reads the story aloud, and the rooms, music and sound effects they play. Both are optional, and Settings changes them any time.",
+      "Both are optional, and Settings can change them later.",
     ),
     card,
     actions,

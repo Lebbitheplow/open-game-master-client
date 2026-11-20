@@ -55,11 +55,7 @@ export function row(label: string, control: HTMLElement): HTMLElement {
 // screens and every table follow the choice; Follow campaign keeps Arcane
 // here and takes each campaign's own theme at its table.
 function appearanceSection(): HTMLElement {
-  const { card, body } = section(
-    "sparkles",
-    "Appearance",
-    "The look of the whole app on this device: its colours, materials and painted borders, by day or by night.",
-  );
+  const { card, body } = section("sparkles", "Appearance", "");
   const host = el("div", "game-root device-settings");
   host.append(spinner());
   body.append(host);
@@ -84,11 +80,7 @@ function appearanceSection(): HTMLElement {
 // panel, drawn by the game bundle into this card. Its controls write the
 // stores the table reads, so a call or table in progress follows along.
 function audioSection(): HTMLElement {
-  const { card, body } = section(
-    "sliders",
-    "Audio and dice",
-    "The microphone and output this device uses, the key that holds the table's mic, how loud each part of the table is, and the dice on it. Changes reach a call or a table already in progress.",
-  );
+  const { card, body } = section("sliders", "Audio and dice", "");
   const host = el("div", "game-root device-settings");
   host.append(spinner());
   body.append(host);
@@ -142,7 +134,7 @@ function deckSection(): HTMLElement | null {
   body.append(row("Deck layout. Auto turns it on on a Steam Deck and in Steam's Game Mode", choices), ...steamRows());
   const legend = el("dl", "pad-legend");
   for (const entry of PAD_LEGEND) legend.append(el("dt", "", entry.control), el("dd", "", entry.does));
-  body.append(el("span", "settings-label", "The controller, on every screen and at the table"), legend);
+  body.append(el("span", "settings-label", "Controller buttons"), legend);
   return card;
 }
 
@@ -173,12 +165,12 @@ function appSection(): HTMLElement {
       }
       body.append(
         row(
-          "Beta updates: offer each night's build before it is promoted to stable. Turned off, the app keeps the version it has until a stable release passes it.",
+          "Beta updates: each night's build, before it reaches stable",
           switchButton(betaUpdates ?? false, (next) => {
             betaUpdates = next;
             void setChannel(next ? "beta" : "stable").then(() => {
               state.updateStatus = null;
-              state.updateNote = next ? "Beta updates are on." : "Updates are back on stable releases.";
+              state.updateNote = next ? "Beta updates are on." : "Back on stable releases. This build stays until a stable one passes it.";
               if (state.screenName === "settings") renderSettings();
             });
           }),
@@ -196,7 +188,7 @@ function deviceSection(): HTMLElement | null {
     isAndroid ? "globe" : "monitor",
     DEVICE,
     local.firstRun
-      ? "Your world has not begun yet. Enter it from the home screen and these switches wake up."
+      ? "Not started yet. Start it from the home screen."
       : local.username
         ? `Playing as ${local.username}.${local.lanOrigin ? ` On your Wi-Fi at ${local.lanOrigin}.` : ""}`
         : "",
@@ -204,19 +196,19 @@ function deviceSection(): HTMLElement | null {
   if (local.firstRun) return card;
   body.append(
     row(
-      "Who tells the story: a human, your OpenAI key" + (isAndroid ? "" : ", or a local model"),
+      "Who tells the story",
       button("secondary", "Story AI", () => renderLocalAi(true), "sparkles"),
     ),
   );
   // Opening the page wakes the world when it sleeps.
   const account = button("secondary", "Open", () => void openLocal("/settings"), "user");
-  body.append(row("Your account in this world: name and avatar", account));
+  body.append(row("Your name and avatar in this world", account));
   const share = el("div", "settings-share");
   share.append(el("span", "settings-label", isAndroid ? "Share online" : "Sharing"));
   share.append(
     local.state === "running"
       ? shareRow()
-      : el("p", "hint", "Sharing starts once your world is awake. Open one of its tables, then come back here or use the campaign lobby's invite dialog."),
+      : el("p", "hint", "Your world is asleep. Open one of its tables to share it."),
   );
   body.append(share);
   return card;
@@ -265,7 +257,7 @@ function transferNote(note: TransferNote): HTMLElement[] {
     case "saved":
       return [
         el("p", "hint", `Saved to ${note.file} (${formatBytes(note.bytes)}).`),
-        el("p", "hint", "Anyone holding the file can read the campaigns in it, so keep it somewhere private. Keys and sign-ins were left out."),
+        el("p", "hint", "Anyone holding the file can read the campaigns in it, so keep it somewhere private."),
       ];
     case "confirm": {
       const replace = button("primary", "Replace my world", () => void commitWorld(), "upload");
@@ -342,7 +334,7 @@ function transferSection(): HTMLElement | null {
   const { card, body } = section(
     "download",
     "Move your world",
-    "Save your whole world to one file, or replace it with one saved on another device. Keys and sign-ins never travel: enter your AI key again on the new device.",
+    "AI keys and sign-ins stay behind: enter your AI key again on the new device.",
   );
   const exportButton = button("secondary", "Export world", () => void exportWorld(), "download");
   const importButton = button("secondary", "Import world", () => void pickWorld(), "upload");
@@ -410,10 +402,10 @@ function worldsSection(): HTMLElement | null {
   const { card, body } = section(
     "link",
     "Visiting hosts",
-    "Hosts running server 0.31.0 or newer are drawn by the app itself: its own screens, fed by the host's data. Older hosts open their own pages.",
+    "The app draws its own screens for hosts on server 0.31.0 or newer. Older hosts open their own pages.",
   );
   const line = row(
-    "When the app's own screens cannot open, load a host on this app's server line or newer through its bundled server, with only game data travelling to it. Off, such a host opens its own pages.",
+    "If the app's own screens cannot open, load a host at least as new as this app through its bundled server. Off: the host opens its own pages.",
     switchButton(portalOn ?? true, (next) => {
       portalOn = next;
       void window.odm.setPortalMode(next);
@@ -448,7 +440,7 @@ function signInsSection(): HTMLElement | null {
   );
   body.append(
     row(
-      "Stay signed in to servers after the app closes. Off: a server where you typed your own password asks for it again next time. Your own world and room-code accounts stay signed in either way, since only this app holds their passwords.",
+      "Stay signed in to servers after the app closes. Your own world and room-code accounts stay signed in either way.",
       switchButton(credentials.keepSignIns, (next) => {
         if (credentials) credentials.keepSignIns = next;
         void window.odm.setKeepSignIns?.(next);
@@ -576,7 +568,7 @@ async function clearCachedFiles(): Promise<void> {
   const result = await clear();
   setTrouble(
     result.ok
-      ? { kind: "done", text: "Cached files cleared. Pages load fresh from each server next time; your sign-ins and your world are untouched." }
+      ? { kind: "done", text: "Cached files cleared." }
       : { kind: "error", message: result.error },
   );
 }
@@ -589,7 +581,7 @@ async function copySummary(): Promise<void> {
   const copied = await copyText(text);
   setTrouble(
     copied
-      ? { kind: "done", text: "Copied. Paste it into your bug report: it names versions, the state of your world and which server files are wrong, and nothing private." }
+      ? { kind: "done", text: "Copied. Paste it into your bug report." }
       : { kind: "error", message: "The summary could not be copied." },
   );
 }
@@ -601,7 +593,7 @@ function troubleshootingSection(): HTMLElement | null {
   const { card, body } = section(
     "refresh",
     "Troubleshooting",
-    "For a world that will not wake, or an app that looks wrong after an update. Nothing here touches your campaigns, pictures, installed worlds or sign-ins.",
+    "For a world that will not wake, or an app that looks wrong after an update. Only Reset touches your campaigns, pictures, installed worlds or sign-ins.",
   );
   const buttons: HTMLButtonElement[] = [];
   let repairButton: HTMLButtonElement | null = null;
@@ -612,27 +604,27 @@ function troubleshootingSection(): HTMLElement | null {
     body.append(line);
   };
   if (bridge.localVerify) {
-    add("Check the server files this app unpacked against the ones it shipped with", button("secondary", "Check files", () => void checkFiles(), "check"));
+    add("Compare the app's server files with the ones it shipped with", button("secondary", "Check files", () => void checkFiles(), "check"));
   }
   if (bridge.localRepair) {
     repairButton = button("secondary", "Repair", () => void repairFiles(), "refresh");
     add(
-      "Unpack the server files again, keeping everything you made. Your world restarts if it is awake",
+      "Unpack the server files again. Your world restarts if it is awake",
       repairButton,
       isGameShowing() ? "Leave the table first: the world restarts to take the fresh files." : "",
     );
   }
   if (bridge.clearCaches) {
-    add("Clear the files the app cached from servers. Sign-ins, saved servers and your world stay", button("secondary", "Clear cached files", () => void clearCachedFiles(), "trash"));
+    add("Files the app cached from servers", button("secondary", "Clear cached files", () => void clearCachedFiles(), "trash"));
   }
   if (bridge.diagnosticSummary) {
     add(
-      "Copy a summary for a bug report: versions, the state of your world, which server files are wrong. No names, keys or campaign text",
+      "A summary for a bug report. No names, keys or campaign text",
       button("secondary", "Copy summary", () => void copySummary(), "copy"),
     );
   }
   if (bridge.showLogs) {
-    add("Open the folder that holds the app's log files", button("secondary", "Show logs", () => void bridge.showLogs?.(), "scroll"));
+    add("The app's log folder", button("secondary", "Show logs", () => void bridge.showLogs?.(), "scroll"));
   }
   // The one row that takes the world out of the app's hands sits last,
   // in red, held while a table is open, and asks for a typed word.
@@ -640,7 +632,7 @@ function troubleshootingSection(): HTMLElement | null {
   if (bridge.resetApp) {
     resetButton = button("quiet danger", "Reset the app", () => setTrouble({ kind: "reset-confirm" }), "trash");
     add(
-      "Start over: set everything this app keeps on this computer aside (nothing is deleted) and restart it empty",
+      "Start over: set everything the app keeps aside (nothing is deleted) and restart it empty",
       resetButton,
       isGameShowing() ? "Leave the table first." : "",
     );
@@ -679,22 +671,21 @@ function troubleshootingSection(): HTMLElement | null {
 
 function homeSection(): HTMLElement {
   const { card, body } = section("scroll", "Title screen", "");
-  body.append(row("Hide the save slots of hosts that are offline", offlineToggle(() => renderSettings())));
+  body.append(row("Tables on offline hosts", offlineToggle(() => renderSettings())));
   return card;
 }
 
 function helpSection(): HTMLElement {
   const { card, body } = section("help", "Help", "");
-  body.append(
-    row("Where everything lives and how to get around", button("secondary", "User guide", () => renderHelp(), "book")),
-    row(
-      "Walk through the title screen again",
-      button("secondary", "Replay tour", () => void refresh().then(() => {
-        renderHome();
-        startAppTour();
-      }), "play"),
-    ),
+  const actions = el("div", "transfer-actions");
+  actions.append(
+    button("secondary", "User guide", () => renderHelp(), "book"),
+    button("secondary", "Replay tour", () => void refresh().then(() => {
+      renderHome();
+      startAppTour();
+    }), "play"),
   );
+  body.append(actions);
   return card;
 }
 
@@ -703,7 +694,7 @@ function serversNote(): HTMLElement | null {
   const { card, body } = section(
     "server",
     "Servers",
-    "Each server keeps your account, avatar and password on its own Settings page: open the server and use the account menu there. Forgetting a server or deleting your account on it is in the menu beside the server's name.",
+    "Your account, avatar and password are on each server's own Settings page, under its account menu. To forget a server or delete your account there, use the buttons beside its name in the menu.",
   );
   body.remove();
   return card;
@@ -740,29 +731,25 @@ export function renderSettings(): void {
   // the hosts it signs in to, and help and repair (which is never asked of
   // anyone before they can play). Every card is the one it always was.
   const sections = (): (HTMLElement | null)[] => {
-    const groups: Array<{ id: string; label: string; detail: string; cards: (HTMLElement | null)[] }> = [
+    const groups: Array<{ id: string; label: string; cards: (HTMLElement | null)[] }> = [
       {
         id: "settings-device",
         label: "Playing on this device",
-        detail: "Only on this device: the look, sound, microphone, dice, controllers and the title screen.",
         cards: [appearanceSection(), audioSection(), deckSection(), homeSection()],
       },
       {
         id: "settings-world",
         label: `Your world on this ${isAndroid ? "device" : "computer"}`,
-        detail: "The world this app hosts: who plays there, its Story AI, its narration and sound, and moving it.",
         cards: [deviceSection(), worldMediaSection(), transferSection()],
       },
       {
         id: "settings-accounts",
         label: "Accounts and connections",
-        detail: "Servers and friends' worlds this app signs in to.",
         cards: [signInsSection(), worldsSection(), serversNote()],
       },
       {
         id: "settings-help",
         label: "Help and maintenance",
-        detail: "Guides, updates, and repairs if something goes wrong.",
         cards: [helpSection(), appSection(), troubleshootingSection(), legalSection()],
       },
     ];
@@ -779,12 +766,12 @@ export function renderSettings(): void {
       contents.append(jump);
     }
     return [
-      intro("Settings", "What this device plays like, the world it hosts, your sign-ins, and help."),
+      intro("Settings", ""),
       contents,
       ...shown.flatMap((group) => {
         const head = el("div", "settings-group");
         head.id = group.id;
-        head.append(el("h2", "settings-group-title", group.label), el("p", "settings-group-detail", group.detail));
+        head.append(el("h2", "settings-group-title", group.label));
         return [head, ...group.cards];
       }),
     ];

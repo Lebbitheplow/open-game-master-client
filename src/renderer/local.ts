@@ -307,7 +307,7 @@ export function renderLocalName(): void {
     backLink("Home", () => void refresh().then(() => renderHome())),
     intro(
       "Name your adventurer",
-      "Your world lives on this device. Pick the name friends will see at the table; letters, digits, _ and - only.",
+      "The name friends see at the table. Letters, digits, _ and - only.",
     ),
     formCard(form, el("p", "hint center", "You can add a password later in the game's settings.")),
   );
