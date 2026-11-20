@@ -65,3 +65,22 @@ export function harnessDescription(card: HarnessCard): string {
   const message = card.message ? ` ${card.message}` : "";
   return `${version}${lockdown}; it only touches the table's rules.${plan}${message}`;
 }
+
+// A program that cannot play the full rules: the Antigravity CLI loads too
+// few tools for the table's full set, so it plays on a cut set that Open
+// Game Master does not support or test. A server before 0.38.2 does not say
+// so, and agy is the one program it would mean.
+export function harnessReduced(card: HarnessCard): boolean {
+  return card.reducedTools ?? card.id === "antigravity";
+}
+
+// The cards the picker lists: never one that cannot play the full rules,
+// unless it is the device's current choice or the player asked to add it.
+export function listedHarnessCards(statuses: HarnessCard[], currentId: string, addReduced: boolean): { listed: HarnessCard[]; unlisted: HarnessCard[] } {
+  const listed = statuses.filter((card) => !harnessReduced(card) || addReduced || card.id === currentId);
+  return { listed, unlisted: statuses.filter((card) => !listed.includes(card)) };
+}
+
+export function harnessReducedWarning(card: HarnessCard): string {
+  return `${card.label} cannot play the full rules: it holds fewer tools than the table's full set, so it plays on a reduced tool set and rules. Open Game Master does not support or test this, and fights and other rules may not run properly. For real play, choose another program.`;
+}

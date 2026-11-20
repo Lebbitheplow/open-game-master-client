@@ -136,6 +136,10 @@ export interface HarnessCard {
   message?: string;
   installHint?: string;
   signInHint?: string;
+  // The program cannot play the full rules (the server's HarnessStatus
+  // reducedTools, server 0.38.2 and later): Open Game Master does not
+  // support, test or recommend it.
+  reducedTools?: boolean;
 }
 
 export type HarnessStatusResult =
