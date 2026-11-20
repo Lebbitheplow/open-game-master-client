@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { harnessDescription, harnessNeedsFixing, harnessStep, harnessTag } from "../dist/shared/harness-card.js";
+import { harnessDescription, harnessNeedsFixing, harnessReduced, harnessReducedWarning, harnessStep, harnessTag, listedHarnessCards } from "../dist/shared/harness-card.js";
 
 // A card as the device world's server sends it (its HarnessStatus).
 function card(overrides = {}) {
@@ -78,3 +78,18 @@ test("an agent not installed, signed out or unavailable gets the step that fixes
   assert.equal(harnessStep(container), "unavailable");
   assert.deepEqual(harnessTag(container), { text: "not available here", tone: "off" });
 });
+
+test("a program that cannot play the full rules is left off the list unless it is chosen or added on purpose, and warns", () => {
+  const claude = card({ id: "claude", label: "Claude Code" });
+  const agy = card({ id: "antigravity", label: "Antigravity CLI", reducedTools: true });
+  const both = [claude, agy];
+  assert.deepEqual(listedHarnessCards(both, "", false).listed.map((entry) => entry.id), ["claude"]);
+  assert.deepEqual(listedHarnessCards(both, "", false).unlisted.map((entry) => entry.id), ["antigravity"]);
+  assert.deepEqual(listedHarnessCards(both, "antigravity", false).listed.map((entry) => entry.id), ["claude", "antigravity"], "the device's own choice stays in view");
+  assert.deepEqual(listedHarnessCards(both, "", true).unlisted, [], "Add it anyway");
+  assert.equal(harnessReduced(card({ id: "antigravity" })), true, "a server before 0.38.2 does not say, and agy is the one it would mean");
+  assert.equal(harnessReduced(card({ id: "antigravity", reducedTools: false })), false, "the server's own word wins");
+  assert.equal(harnessReduced(claude), false);
+  assert.match(harnessReducedWarning(agy), /^Antigravity CLI cannot play the full rules.*does not support or test this/);
+});
+

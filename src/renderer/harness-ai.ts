@@ -1,6 +1,6 @@
 // Story AI's fourth door on a computer: "Use an agent I already have". The
 // device world's own server lists the agent programs it can start (Claude
-// Code, Codex, opencode, Grok Build, Pi, the Antigravity CLI), signed in and locked down, and the
+// Code, Codex, opencode, Grok Build, Pi), signed in and locked down, and the
 // player picks one and a model. Nothing is looked for or stored by the shell
 // itself: the server is what will start the program, so its answer is the
 // only one that counts, and no vendor password or key is ever asked for.
@@ -10,7 +10,7 @@ import { renderError } from "./servers.js";
 import { state } from "./state.js";
 import type { AiSetup, HarnessCard, HarnessStatusResult } from "../shared/types";
 import { harnessFastModel } from "../shared/ai-setup.js";
-import { harnessDescription, harnessStep, harnessTag } from "../shared/harness-card.js";
+import { harnessDescription, harnessReduced, harnessReducedWarning, harnessStep, harnessTag, listedHarnessCards } from "../shared/harness-card.js";
 import { speedChoice } from "./speed-choice.js";
 import { renderAgentPictures } from "./local-ai.js";
 
@@ -51,11 +51,15 @@ function drawPicker(
   current: { id: string; model: string; utilityModel: string; fast?: boolean },
   finish: Finish,
   back: Back,
+  addReduced = false,
 ): void {
   const choices = el("div", "choices");
   choices.setAttribute("role", "radiogroup");
   choices.setAttribute("aria-label", "Agent program");
-  for (const card of statuses) {
+  // A program that cannot play the full rules stays off the list unless it
+  // is already this device's choice or the player adds it on purpose.
+  const { listed, unlisted } = listedHarnessCards(statuses, current.id, addReduced);
+  for (const card of listed) {
     const tag = harnessTag(card);
     const btn = el("button", "panel ornate choice");
     btn.type = "button";
@@ -80,9 +84,17 @@ function drawPicker(
     backLink("Story AI", back),
     intro(
       "Use an agent you already have",
-      "Claude Code, Codex, opencode, Grok Build, Pi or the Antigravity CLI tells the story on its own sign-in. It gets none of its own tools: only the table's rules, turn by turn, the same as the built-in storyteller.",
+      "Claude Code, Codex, opencode, Grok Build or Pi tells the story on its own sign-in. It gets none of its own tools: only the table's rules, turn by turn, the same as the built-in storyteller.",
     ),
     choices,
+    unlisted.length
+      ? el(
+          "p",
+          "hint",
+          `${unlisted.map((card) => card.label).join(", ")} cannot play the full rules, so ${unlisted.length === 1 ? "it is" : "they are"} left off the list.`,
+        )
+      : null,
+    unlisted.length ? button("quiet", "Add it anyway", () => drawPicker(statuses, current, finish, back, true)) : null,
     button("quiet", "Check again", () => renderHarnessPicker(finish, back, true), "refresh"),
   );
 }
@@ -209,5 +221,7 @@ function drawDetail(
         submit.disabled = false;
       });
   });
-  show("narrow", backToList, intro(`Tell the story with ${card.label}`, harnessDescription(card)), formCard(form));
+  const warning = harnessReduced(card) ? el("p", "error", harnessReducedWarning(card)) : null;
+  if (warning) warning.setAttribute("role", "alert");
+  show("narrow", backToList, intro(`Tell the story with ${card.label}`, harnessDescription(card)), formCard(warning, form));
 }
