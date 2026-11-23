@@ -50,3 +50,44 @@ test("the game root mounts the host's confirm dialog, as the root layout does", 
   assert.match(source, /import \{ ConfirmHost \} from "@\/components\/ui\/ConfirmDialog";/);
   assert.match(source, /<ConfirmHost \/>/);
 });
+
+// What the server's root layout lays on every page, and how the apps lay
+// it instead, since they compile the pages without that layout. A component
+// the layout gains is missing from every app screen until it is named here:
+// the theme panel's host (server 0.39.1) was one, and the lobby's Theme
+// button opened nothing in the apps.
+const LAID_BY_THE_SHELL = new Map([
+  ["ThemeApplier", "applyTheme() at start and on a change of the system's day or night (game/index.tsx)"],
+  ["LocaleApplier", "applyLocale() at start (game/index.tsx)"],
+  ["LocaleProvider", "the screens read the reader's language from src/lib/locale.tsx's store with no provider"],
+  ["TopoBackground", "the shell's own contour lines (topo.ts)"],
+  ["ServerAddressButton", "the shell's server list shows each world's address and QR"],
+]);
+
+function layoutComponents(layout) {
+  const body = layout.slice(layout.indexOf("<body"));
+  return [...new Set([...body.matchAll(/<([A-Z]\w*)[\s/>]/g)].map((match) => match[1]))];
+}
+
+test("every component the server's root layout lays is laid in the apps too", { skip: !fs.existsSync(path.join(serverDir, "src", "app", "layout.tsx")) }, () => {
+  const layout = fs.readFileSync(path.join(serverDir, "src", "app", "layout.tsx"), "utf8");
+  const source = fs.readFileSync(path.join(repo, "src", "renderer", "game", "index.tsx"), "utf8");
+  const found = layoutComponents(layout);
+  assert.ok(found.includes("ConfirmHost"), `no components read from the layout: ${found.join(", ")}`);
+  const missing = found.filter((name) => !LAID_BY_THE_SHELL.has(name) && !new RegExp(`<${name}[\\s/>]`).test(source));
+  assert.deepEqual(missing, [], `the server's layout lays ${missing.join(", ")}, which the game root does not`);
+});
+
+test("the theme panel's host is mounted beside the confirm host and closed with the screens", { skip: !fs.existsSync(path.join(serverDir, "src", "components", "ThemePanelHost.tsx")) }, () => {
+  const source = fs.readFileSync(path.join(repo, "src", "renderer", "game", "index.tsx"), "utf8");
+  assert.match(source, /import \{ ThemePanelHost \} from "@\/components\/ThemePanelHost";/);
+  assert.match(source, /<ConfirmHost \/>[\s\S]*<ThemePanelHost \/>/);
+  assert.match(source, /render\(null, root\);\s*(?:\/\/.*\s*)*setThemePanelOpen\(false\);/);
+});
+
+// A theme's day artwork (artDay) is laid by applyTheme, so a change of the
+// system's brightness on Auto has to run it again.
+test("the game root lays the day or night artwork again when the system turns over on Auto", () => {
+  const source = fs.readFileSync(path.join(repo, "src", "renderer", "game", "index.tsx"), "utf8");
+  assert.match(source, /matchMedia\?\.\("\(prefers-color-scheme: light\)"\)\.addEventListener\("change", \(\) => \{\s*if \(readThemeChoice\(\) === "auto"\) applyTheme\(\);/);
+});

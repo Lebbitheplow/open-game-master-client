@@ -10,6 +10,7 @@ import { render } from "preact";
 import { DeviceSettings } from "@/components/DeviceSettings";
 import { AppearancePicker } from "@/components/AppearancePicker";
 import { ConfirmHost } from "@/components/ui/ConfirmDialog";
+import { ThemePanelHost } from "@/components/ThemePanelHost";
 import { PageSkeleton, type SkeletonKind } from "@/components/PageSkeleton";
 import { HostClient, type HostSession } from "../api/host.js";
 import { GameRouter, matchRoute } from "./router.js";
@@ -18,7 +19,7 @@ import { resolvedParams } from "./params.js";
 import { installLocalAssets, installRuntime, installThemeArt, uninstallRuntime } from "./runtime.js";
 import { installAutoFocus } from "./autofocus.js";
 import { useSyncExternalStore } from "preact/compat";
-import { applyTheme } from "@/lib/theme-mode";
+import { applyTheme, readThemeChoice, setThemePanelOpen } from "@/lib/theme-mode";
 import { applyLocale, readLocaleChoice, resolveLocale } from "@/lib/locale";
 import { loadCatalog } from "@/lib/i18n/catalog-loader";
 
@@ -34,6 +35,16 @@ installAutoFocus();
 // instead of starting dark and turning to day on entering a campaign.
 applyTheme();
 installThemeArt();
+// A theme may paint different artwork by day (server 0.39.1's artDay:
+// Unquiet Depths' case file by day, its drowned stone by night), and the
+// artwork is laid by applyTheme, not by the stylesheet. With brightness on
+// Auto the shell follows the system's change of day or night itself
+// (app.ts), which turns the palette over but left the night's artwork on a
+// day screen until the theme was next changed. The server's ThemeApplier
+// does this from its root layout, which the apps never load.
+window.matchMedia?.("(prefers-color-scheme: light)").addEventListener("change", () => {
+  if (readThemeChoice() === "auto") applyTheme();
+});
 
 // The reader's language (server 0.37.1's French interface): the server's
 // root layout resolves it and loads the French catalog for its pages, and
@@ -228,6 +239,13 @@ function GameApp({ router, root, onLeave }: { router: GameRouter; root: HTMLElem
           as Discard this copy and deleting a campaign. Outside the page's
           boundary, so a question survives the page it was asked from. */}
       <ConfirmHost />
+      {/* The theme panel (server 0.39.1), which the server's root layout
+          mounts: the lobby's Theme button, the table settings' theme button
+          and the account menu's Appearance only ask for it to open, so
+          without a host here each of them opened nothing in the apps. Beside
+          the confirm host, so it stays open across a change of page, as on
+          the website. */}
+      <ThemePanelHost />
     </>
   );
 }
@@ -307,6 +325,9 @@ export function mountGame(root: HTMLElement, options: GameOptions): GameMount {
       root.removeEventListener("pointerover", onIntent);
       root.removeEventListener("touchstart", onIntent);
       render(null, root);
+      // A panel left open when the screens close would open again over the
+      // next world's first screen.
+      setThemePanelOpen(false);
       uninstallRuntime();
     },
   };

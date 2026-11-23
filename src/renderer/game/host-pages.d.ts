@@ -36,6 +36,13 @@ declare module "@/components/ui/ConfirmDialog" {
   export const ConfirmHost: ComponentType<Record<string, never>>;
 }
 
+// The theme panel's host (src/components/ThemePanelHost.tsx, server
+// 0.39.1), which the server's root layout mounts; the game root mounts it.
+declare module "@/components/ThemePanelHost" {
+  import type { ComponentType } from "preact/compat";
+  export const ThemePanelHost: ComponentType<Record<string, never>>;
+}
+
 // The reader's theme and interface scale (src/lib/theme-mode.ts), which the
 // server applies from its root layout; the game root applies a saved choice
 // here when the screens load.
@@ -44,6 +51,7 @@ declare module "@/lib/theme-mode" {
   export function applyTheme(): void;
   export function readThemeChoice(): ThemeChoice;
   export function readUiScale(): number;
+  export function setThemePanelOpen(open: boolean): void;
 }
 
 // The reader's language (src/lib/locale.tsx), which the server applies from
