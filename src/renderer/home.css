@@ -68,6 +68,22 @@
 .icon-btn:active:not(:disabled) { transform: scale(0.93); transition-duration: 90ms; }
 .icon-btn:disabled { opacity: 0.6; }
 .icon-btn.spin svg { animation: spin 1.1s linear infinite; }
+/* A small instrument (a slot's Duplicate and Delete at 28 px, a host's Forget
+   at 30, Refresh at 32) keeps its size on screen; on a phone its tap reaches
+   40 px round it, as the server's .tap-reach does (src/app/styles/kit.css),
+   so its row does not grow. */
+@media (pointer: coarse) {
+  .icon-btn { position: relative; }
+  .icon-btn::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 40px);
+    height: max(100%, 40px);
+    translate: -50% -50%;
+  }
+}
 
 /* The portrait medallion: the device profile's initial ringed in gold, the
    way the title screen shows the account. It opens the menu. */
