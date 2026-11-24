@@ -901,6 +901,15 @@
 }
 .tt-slot-actions .icon-btn:active:not(:disabled) { transform: scale(0.9); }
 .tt-slot-actions .icon-btn:disabled { opacity: 0.5; cursor: progress; }
+/* Duplicate and Delete stand 2 px apart, so each one's 40 px reach covers
+   6 px of the other, and Delete, painted last, took a tap on Duplicate's
+   right edge. Under the pair's own stacking context both reaches sit below
+   both buttons: a tap on a button is that button's, and the reach round the
+   pair still lies over the slot. */
+@media (pointer: coarse) {
+  .tt-slot-actions { isolation: isolate; }
+  .tt-slot-actions .icon-btn::after { z-index: -1; }
+}
 .tt-slots-error { text-align: right; }
 .tt-slot {
   position: relative;
