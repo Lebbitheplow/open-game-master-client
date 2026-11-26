@@ -2,7 +2,7 @@
 // desktop shell uses (it only talks to window.odm); the Capacitor bridge
 // implementation is bundled in front of it.
 import { execFileSync } from "node:child_process";
-import { build } from "esbuild";
+import { build, transform } from "esbuild";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -76,9 +76,14 @@ await build({
 buildGameCss(server, path.join(www, "game"));
 buildThemeTokens(server, path.join(www, "game"));
 
-for (const name of ["style.css", "controls.css", "home.css", "story.webp"]) {
-  fs.copyFileSync(path.join(repo, "src", "renderer", name), path.join(www, name));
+// The shell's own sheets are written for people to read (home.css is about
+// half comments); the APK carries them minified, as it does every script.
+for (const name of ["style.css", "controls.css", "home.css"]) {
+  const css = fs.readFileSync(path.join(repo, "src", "renderer", name), "utf8");
+  const { code } = await transform(css, { loader: "css", minify: true });
+  fs.writeFileSync(path.join(www, name), code);
 }
+fs.copyFileSync(path.join(repo, "src", "renderer", "story.webp"), path.join(www, "story.webp"));
 fs.copyFileSync(path.join(mobile, "src", "index.html"), path.join(www, "index.html"));
 
 // The same three faces as the desktop shell. Each package is resolved as a
