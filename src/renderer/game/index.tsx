@@ -349,18 +349,24 @@ export function prefetch(path: string): void {
 // the shell's own Settings screen: the same stores the table's hooks read,
 // so a change here reaches a call or a table already running.
 export function mountDeviceSettings(root: HTMLElement): () => void {
-  installLocalAssets();
+  const release = installLocalAssets(root);
   render(<DeviceSettings />, root);
-  return () => render(null, root);
+  return () => {
+    render(null, root);
+    release();
+  };
 }
 
 // The visual theme and brightness (the server's AppearancePicker, the one
 // its account pages show), for the shell's own Settings: the choice is this
 // device's, and the shell's home, drawer and Settings follow it at once.
 export function mountAppearance(root: HTMLElement): () => void {
-  installLocalAssets();
+  const release = installLocalAssets(root);
   render(<AppearancePicker />, root);
-  return () => render(null, root);
+  return () => {
+    render(null, root);
+    release();
+  };
 }
 
 declare global {

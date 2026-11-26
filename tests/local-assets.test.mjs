@@ -4,8 +4,10 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { answersLocally, assetContentType, createLocalAssetIndex, localFolder } from "../dist/shared/local-assets.js";
+import { serverDir as findServerDir } from "../scripts/server-dir.mjs";
 
 const repo = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const serverDir = findServerDir(repo);
 
 // A host path resolves to the app's own copy only when the build's manifest
 // lists it; a build whose manifest lists no icons resolves every icon
@@ -82,4 +84,57 @@ test("every manifest entry of the desktop build exists beside the bundle", () =>
     }
   }
   assert.ok(count > 3000, `only ${count} files shipped`);
+});
+
+// A visual theme is its pictures: the frame, the grain, the corner and the
+// backdrop the server's catalog names for it, by night and by day. The page
+// is handed them as "/assets/themes/..." addresses, which only resolve in the
+// apps when the build carries each one, so a theme added to the server with
+// a picture the build left out would show without it in every app.
+const catalogFile = path.join(serverDir, "src", "lib", "appearance-themes.ts");
+test("the build carries every picture the server's theme catalog names", { skip: !fs.existsSync(catalogFile) }, () => {
+  const named = [...new Set([...fs.readFileSync(catalogFile, "utf8").matchAll(/"(\/assets\/themes\/[^"]+)"/g)].map((match) => match[1]))];
+  assert.ok(named.length >= 40, `the catalog names only ${named.length} pictures; has its shape changed?`);
+  const manifest = JSON.parse(fs.readFileSync(path.join(repo, "dist", "renderer", "game", "public", "manifest.json"), "utf8"));
+  const index = createLocalAssetIndex(manifest);
+  const missing = named.filter((hostPath) => {
+    const local = index.localPath(hostPath);
+    return !local || !fs.existsSync(path.join(repo, "dist", "renderer", local));
+  });
+  assert.deepEqual(missing, [], `theme pictures the apps do not carry: ${missing.join(", ")}`);
+});
+
+// The shell's Settings draws two of the server's panels with no host
+// connected (the theme picker and the audio and dice controls), so no world's
+// observer is watching them. The picker's previews take their frame and
+// grain from inline custom properties, and with nothing rewriting those every
+// preview asked the app's own origin and stood bare. Each such panel is
+// watched from its own root for as long as it is mounted.
+test("a game panel drawn with no host connected has its inline artwork sent to the app's copies", () => {
+  const runtime = fs.readFileSync(path.join(repo, "src", "renderer", "game", "runtime.ts"), "utf8");
+  const install = runtime.slice(runtime.indexOf("export function installLocalAssets("));
+  const body = install.slice(0, install.indexOf("\n}\n"));
+  assert.match(body, /^export function installLocalAssets\(root: HTMLElement\): \(\) => void \{/, "installLocalAssets no longer takes the panel's root");
+  assert.match(body, /new MutationObserver\(onMutations\)/, "the panel is not watched");
+  assert.match(body, /\.observe\(root, WATCHED\)/, "the watch is not on the panel's own root");
+  assert.match(body, /scan\(root\)/, "what the panel already holds is not looked at");
+  assert.match(runtime, /const WATCHED: MutationObserverInit = \{[^}]*attributeFilter: \[[^\]]*"style"\]/, "a change of inline style is not watched");
+  // And before the write, for whatever needs no wait: a screen that measures
+  // itself as it mounts has the browser ask for a picture ahead of the
+  // observer, so the app was asked for its own carried art and missed.
+  const hook = runtime.slice(runtime.indexOf("function hookInlineStyles("), runtime.indexOf("function fixBackgroundImage("));
+  assert.match(hook, /const previous = options\.vnode;/, "the hook drops whoever was on Preact's vnode hook before it");
+  assert.match(hook, /options\.vnode = \(vnode\) => \{/, "inline styles are not looked at as they are drawn");
+  assert.match(hook, /cssValueAsDrawn\(value\)/);
+  assert.match(hook, /\{ \.\.\.style \}/, "the page's own style object is changed in place");
+  assert.match(hook, /previous\?\.\(vnode\);/);
+  assert.match(runtime, /mediaPatched = true;\n\s+hookInlineStyles\(\);/, "the hook is not laid with the picture setters");
+  const index = fs.readFileSync(path.join(repo, "src", "renderer", "game", "index.tsx"), "utf8");
+  for (const mount of ["mountDeviceSettings", "mountAppearance"]) {
+    const start = index.indexOf(`export function ${mount}(`);
+    assert.ok(start >= 0, `${mount} is gone`);
+    const text = index.slice(start, index.indexOf("\n}\n", start));
+    assert.match(text, /const release = installLocalAssets\(root\);\n\s+render\(</, `${mount} does not watch its panel before drawing it`);
+    assert.match(text, /release\(\);/, `${mount} leaves its watch behind`);
+  }
 });
