@@ -58,14 +58,17 @@ declare module "@/lib/theme-mode" {
 // its root layout; the game root applies the device's choice here when the
 // screens load.
 declare module "@/lib/locale" {
-  export type LocaleChoice = "auto" | "en" | "fr";
+  // The interface's languages: English, French and Spanish. Against a
+  // server older than its Spanish interface the build still passes: a
+  // choice that server does not have is one its own screens never offer.
+  export type LocaleChoice = "auto" | "en" | "fr" | "es";
   export function applyLocale(): void;
   export function readLocaleChoice(): LocaleChoice;
-  export function resolveLocale(choice: LocaleChoice): "en" | "fr";
+  export function resolveLocale(choice: LocaleChoice): "en" | "fr" | "es";
 }
 
-// The French catalog's loader (src/lib/i18n/catalog-loader.ts): the
+// The catalogs' loader (src/lib/i18n/catalog-loader.ts): each language's
 // catalog is its own chunk, fetched when the reader's language needs it.
 declare module "@/lib/i18n/catalog-loader" {
-  export function loadCatalog(locale: "en" | "fr"): Promise<void>;
+  export function loadCatalog(locale: "en" | "fr" | "es"): Promise<void>;
 }
