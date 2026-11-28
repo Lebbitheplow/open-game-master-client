@@ -46,16 +46,16 @@ window.matchMedia?.("(prefers-color-scheme: light)").addEventListener("change", 
   if (readThemeChoice() === "auto") applyTheme();
 });
 
-// The reader's language (server 0.37.1's French interface): the server's
-// root layout resolves it and loads the French catalog for its pages, and
-// the apps never load that layout. Here the device's own choice (Settings >
-// Language, else a French host's language, which its capabilities
-// carry, else the system's languages) is applied to <html lang>, and a
-// French reader's catalog is fetched from the bundle at start, so the first
-// screen is not English for the moment it takes. The screens switch over
-// by themselves when it lands (the server's src/lib/locale.tsx). A server
-// older than the French interface has neither module, and the build names
-// the missing one.
+// The reader's language (server 0.37.1's French interface, and the Spanish
+// one after it): the server's root layout resolves it and loads that language's
+// catalog for its pages, and the apps never load that layout. Here the
+// device's own choice (Settings > Language, else the language of a French or
+// Spanish host, which its capabilities carry, else the system's languages)
+// is applied to <html lang>, and the reader's catalog is fetched from the
+// bundle at start, so the first screen is not English for the moment it
+// takes. The screens switch over by themselves when it lands (the server's
+// src/lib/locale.tsx). A server older than the French interface has neither
+// module, and the build names the missing one.
 applyLocale();
 void loadCatalog(resolveLocale(readLocaleChoice()));
 
