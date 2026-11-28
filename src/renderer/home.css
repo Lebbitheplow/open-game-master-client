@@ -1770,7 +1770,11 @@ html[data-theme="light"] .tt-first > .topbar.tt-header .wordmark { color: var(--
    Only the game root is snapshotted, never the document, so the fade
    covers the page column alone. The root is named from there, for the
    transition only: a name that stayed would make it a stacking context
-   and put the pages' fixed dialogs under the shell's overlays. */
+   and put the pages' fixed dialogs under the shell's overlays.
+   A theme's arrival (the server's src/lib/theme-arrival) is the one
+   transition that takes the whole document, this topbar and the home
+   included: it puts the name back itself, with a priority, for as long as
+   it plays. So this rule carries none (tests/theme-arrival.test.mjs). */
 :root { view-transition-name: none; }
 
 /* A short notice from the native side (a file saved, a save that failed). */

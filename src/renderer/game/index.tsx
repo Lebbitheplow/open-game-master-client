@@ -134,7 +134,10 @@ class Boundary extends Component<{ children: ReactNode; onError: (error: unknown
 // page. Only the game root takes part (home.css takes the document's
 // transition name away), so the shell's topbar above it stays live. Skipped
 // under reduced motion and where the API is missing, which leaves the plain
-// swap.
+// swap. A theme's arrival (the server's src/lib/theme-arrival) is a view
+// transition of its own, over the whole document: one started while a page
+// fades ends the fade, and a page change ends an arrival, each landing on
+// its last frame at once.
 type ViewTransitionDocument = Document & {
   startViewTransition?: (callback: () => Promise<void>) => { finished: Promise<void>; ready?: Promise<void> };
 };
