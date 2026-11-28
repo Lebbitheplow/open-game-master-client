@@ -8,6 +8,7 @@ import type { HostClient, StreamStop } from "../api/host.js";
 import type { SseEvent } from "../../shared/sse.js";
 import { hostRelativePath } from "../../shared/host-fetch.js";
 import { rewriteCssUrls, rootRelativeCssUrls } from "../../shared/css-urls.js";
+import { options } from "preact";
 import { localAsset } from "./local-assets.js";
 import { answersLocally, assetContentType } from "../../shared/local-assets.js";
 import { forgetObjectUrls, hold, keepObjectUrlsFor, objectUrlFor } from "./object-urls.js";
@@ -101,6 +102,53 @@ function fixCssUrls(element: HTMLElement, property: string): void {
       element.style.setProperty(property, swapped);
     });
   }
+}
+
+// The same road before a value is ever written, for every address that
+// needs no wait: the app's own copy, or a public path on a host the page may
+// ask directly. The observer above runs after the write, and a screen that
+// measures itself as it mounts (a dialog placing itself, a panel sliding in)
+// makes the browser resolve styles first, so each picture was asked of the
+// app's own origin, missed, and arrived a beat later: the campaign-setting
+// plates, the map tool's tile swatches and every preview in the theme panel
+// did this on each visit. A protected path still waits for the observer and
+// its object URL.
+function cssValueAsDrawn(value: string): string {
+  if (!value.includes("url(")) return value;
+  const client = active;
+  return rewriteCssUrls(value, (hostPath) => {
+    const local = localAsset(hostPath);
+    if (local) return local;
+    if (client && !mustFetch(client) && PUBLIC_PREFIXES.some((prefix) => hostPath.startsWith(prefix))) return `${client.origin}${hostPath}`;
+    return null;
+  });
+}
+
+// Every element the screens draw passes through Preact's vnode hook with its
+// style still an object, whichever way the value would reach the DOM (a
+// custom property goes through setProperty, any other through a plain
+// assignment the browser gives no single place to wrap). The style is copied
+// before it is changed: a page may hand the same object to many elements.
+let stylesHooked = false;
+
+function hookInlineStyles(): void {
+  if (stylesHooked) return;
+  stylesHooked = true;
+  const previous = options.vnode;
+  options.vnode = (vnode) => {
+    const props = vnode.props as { style?: unknown } | null;
+    const style = props?.style;
+    if (props && typeof vnode.type === "string" && style && typeof style === "object") {
+      let drawn: Record<string, unknown> | null = null;
+      for (const [key, value] of Object.entries(style)) {
+        if (typeof value !== "string") continue;
+        const next = cssValueAsDrawn(value);
+        if (next !== value) (drawn ??= { ...style })[key] = next;
+      }
+      if (drawn) props.style = drawn;
+    }
+    previous?.(vnode);
+  };
 }
 
 function fixBackgroundImage(element: Element): void {
@@ -436,6 +484,7 @@ function patchPlayback(): void {
 function patchMediaSetters(): void {
   if (mediaPatched) return;
   mediaPatched = true;
+  hookInlineStyles();
   for (const proto of [HTMLMediaElement.prototype, HTMLImageElement.prototype, HTMLSourceElement.prototype]) {
     const descriptor = Object.getOwnPropertyDescriptor(proto, "src");
     if (!descriptor?.set || !descriptor.get) continue;
@@ -494,6 +543,15 @@ function patchMediaSetters(): void {
   PatchedAudio.prototype = NativeAudio.prototype;
   window.Audio = PatchedAudio;
 }
+
+// What a watch on a subtree is told of: new nodes, and a change to an
+// address or to the inline style of one already there.
+const WATCHED: MutationObserverInit = {
+  childList: true,
+  subtree: true,
+  attributes: true,
+  attributeFilter: [...MEDIA_ATTRS, ...SVG_IMAGE_ATTRS, "style"],
+};
 
 function scan(root: Node): void {
   if (root instanceof Element) {
@@ -617,10 +675,20 @@ function guardBogusErrors(): void {
 }
 
 // For the app's own screens that draw a game panel with no host connected
-// (Settings): only the picture setters, which send the painted icons to the
-// app's own copy. Nothing else of the runtime needs a host-less page.
-export function installLocalAssets(): void {
+// (Settings): the picture setters, which send the painted icons to the app's
+// own copy, and a watch on the panel for what it paints through inline CSS.
+// The appearance picker gives each thumbnail its theme's frame and grain as
+// `--theme-art-*` custom properties, and only a world's observer rewrote
+// those: in Settings every thumbnail asked the app's own origin for
+// "/assets/themes/..." and stood bare, without its border or its material.
+// With no host each address the app carries goes to its copy and any other
+// is left as written. Returns the release, for when the panel is taken down.
+export function installLocalAssets(root: HTMLElement): () => void {
   patchMediaSetters();
+  const watch = new MutationObserver(onMutations);
+  watch.observe(root, WATCHED);
+  scan(root);
+  return () => watch.disconnect();
 }
 
 // <html> carries the visual theme's artwork for every screen, with a host or
@@ -663,12 +731,7 @@ export function installRuntime(client: HostClient, options: { onSessionLost?: ()
   }
   patchMediaSetters();
   observer ??= new MutationObserver(onMutations);
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: [...MEDIA_ATTRS, ...SVG_IMAGE_ATTRS, "style"],
-  });
+  observer.observe(document.body, WATCHED);
   scan(document.body);
 }
 
